@@ -28,3 +28,44 @@ Asegúrate de tener Python instalado en tu sistema. Este proyecto ha sido desarr
    
    ```bash
    python -m venv .venv
+   ```
+   
+4. Activa el entorno virtual:
+
+   - En Windows:
+     ```cmd
+     .venv\Scripts\activate
+     ```
+   - En macOS/Linux:
+     ```bash
+     source .venv/bin/activate
+     ```
+
+5. Instala las dependencias del proyecto:
+   
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Configuración de la API Key de OpenAI
+
+Debes establecer tu API key de OpenAI como una variable de entorno:
+
+- En Windows, ejecuta:
+  ```cmd
+  set OPENAI_API_KEY=tu_api_key_aquí
+  ```
+- En macOS/Linux, ejecuta:
+  ```bash
+  export OPENAI_API_KEY=tu_api_key_aquí
+  ```
+
+## Ejecución
+
+Para ejecutar la aplicación, asegúrate de que el entorno virtual esté activado y ejecuta:
+
+```bash
+streamlit run main.py
+```
+
+La aplicación debería abrirse automáticamente en tu navegador predeterminado.
