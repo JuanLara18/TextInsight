@@ -1,0 +1,41 @@
+# Configuración general de Streamlit
+
+[server]
+# Especifica el puerto en el que se ejecuta Streamlit. Útil si el predeterminado (8501) ya está en uso.
+port = 8502
+# Habilita el acceso a través de la red. Cambiar a false si solo quieres acceso local.
+enableCORS = false
+
+[browser]
+# Abre automáticamente un navegador apuntando a la app de Streamlit cuando se inicia.
+serverAddress = "localhost"
+
+# Configuración del tema personalizado de Streamlit
+
+[theme]
+# base puede ser "light" para el modo claro o "dark" para el modo oscuro.
+base = "light"
+
+# Color primario utilizado para botones, enlaces, etc.
+primaryColor = "#1b9e77"
+
+# Color de fondo de la página principal.
+backgroundColor = "#ffffff"
+
+# Color de fondo para los widgets y la barra lateral.
+secondaryBackgroundColor = "#f0f2f6"
+
+# Color del texto.
+textColor = "#333333"
+
+# Color utilizado para los elementos que están "desactivados" o "inactivos".
+font = "sans serif"
+
+# Configuraciones adicionales (opcionales)
+[deprecation]
+# Oculta los avisos de deprecación para tener una salida más limpia.
+showfileUploaderEncoding = false
+
+# Establece esta opción en true para mostrar el logo de Streamlit en la parte inferior de la barra lateral.
+showStreamlitLogo = true
+

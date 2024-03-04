@@ -1,0 +1,6 @@
+streamlit
+openai
+pandas
+matplotlib
+spacy
+nltk
