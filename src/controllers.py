@@ -54,5 +54,5 @@ def preparar_datos_para_analisis(df):
     - DataFrame original con una columna adicional 'Texto Procesado'.
     """
     # Preprocesar texto corregido para análisis
-    df['Texto Procesado'] = df['Corregidos'].apply(preprocesar_texto)
+    df['Procesado'] = df['Corregidos'].apply(preprocesar_texto)
     return df

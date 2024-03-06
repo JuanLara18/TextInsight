@@ -26,12 +26,13 @@ def welcome_page():
 
 # Función para cargar datos y corregir frases
 def data_loading_page():
-    st.title("Carga de Datos")
+    st.title("Taller de Datos")
+    st.header("Cargar de Datos")
     uploaded_file = st.file_uploader("Carga un archivo (xlsx, csv, sav, txt):", type=['xlsx', 'csv', 'sav', 'txt'])
     if uploaded_file is not None:
-        st.success("Datos cargados correctamente. Utiliza 'Corregir Datos' para aplicar correcciones.")
+        st.success("Datos cargados correctamente.")
     
-    st.title("Corrección de Datos")
+    st.header("Corrección y Preprocesamiento de Datos")
     if uploaded_file is not None:
         df = load_and_extract_data(uploaded_file)
         if df is not None:
@@ -44,17 +45,26 @@ def data_loading_page():
                 with st.container():
                     if st.button("Corregir Datos"):
                         # Corrige frases originales y actualiza el estado de sesión
-                        df['Corregidos'] = corregir_frases(df['Originales'].tolist(), sensibilidad)
-                        st.session_state['df_procesado'] = df        
+                        df['Corregidos'] = corregir_frases(df['Originales'].tolist(), sensibilidad) # Agregado directamente
+                        st.session_state['df_procesado'] = df      
+                        st.success("Texto corregido con éxito.")
+                    
+                    if st.button("Preprocesar Texto"):
+                        df = preparar_datos_para_analisis(df) # Agregado por la función en (Procesado)
+                        st.session_state['df_procesado'] = df
+                        st.success("Texto preprocesado con éxito.")
                
-
+            st.header("Visualización de Datos")
             # Slider para seleccionar cuántas filas mostrar
             num_rows = len(df)
             slider_val = st.slider("Selecciona cuántas filas mostrar:", 1, max(10, num_rows), min(10, num_rows))
             
             # Muestra las frases originales y corregidas
             df_mostrar = st.session_state.get('df_procesado', df)
-            st.write(df_mostrar[['Originales', 'Corregidos']].head(slider_val))
+            if "Procesado" in df_mostrar.columns:
+                st.write(df_mostrar[['Originales', 'Corregidos', "Procesado"]].head(slider_val))
+            else:
+                st.write(df_mostrar[['Originales', 'Corregidos']].head(slider_val))
             
         else:
             st.error("Error al cargar los datos. Asegúrate de que el formato del archivo es correcto.")
@@ -65,17 +75,6 @@ def analysis_page():
 
     if 'df_procesado' in st.session_state:
         df = st.session_state['df_procesado']
-
-        # Utiliza st.container para agrupar preprocesamiento y visualizaciones
-        with st.container():
-            st.header("Preprocesamiento")
-            if st.button("Preprocesar Texto"):
-                if 'Texto Procesado' not in df.columns:
-                    df = preparar_datos_para_analisis(df)
-                    st.session_state['df_procesado'] = df
-                    st.success("Texto preprocesado con éxito.")
-                else:
-                    st.info("El texto ya ha sido preprocesado.")
 
         # Columnas para nube de palabras y análisis de n-gramas
         col1, col2 = st.columns(2)
