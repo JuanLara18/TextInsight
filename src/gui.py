@@ -2,7 +2,7 @@
 import streamlit as st
 from .controllers import load_and_extract_data, preparar_datos_para_analisis
 # Asegúrate de que el nombre de la función esté correcto según methods.py
-from .methods import calculate_top_n_grams, generate_wordcloud, corregir_frases, ngramas_a_dataframe, generar_temas
+from .methods import calculate_top_n_grams, generate_wordcloud, corregir_frases, ngramas_a_dataframe, generar_temas, generar_grafo, sentimientos
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
 
 modelo_seleccionado = ""
@@ -66,7 +66,7 @@ def analysis_page():
                 else:
                     st.info("El texto ya ha sido preprocesado.")
 
-        # Generación de nube de palabras y n-gramas en columnas
+        # Columnas para nube de palabras y análisis de n-gramas
         col1, col2 = st.columns(2)
 
         with col1:
@@ -80,7 +80,7 @@ def analysis_page():
                     st.error("Por favor, preprocesa el texto antes de generar la nube de palabras.")
 
         with col2:
-            st.header("Análisis de N-Gramas")
+            st.header("N-Gramas")
             n_value = st.number_input("Especifica el valor de n para los n-gramas", min_value=1, value=2, key='n_value_ngrams')
             top_n = st.slider("Selecciona cuántos n-gramas más comunes mostrar:", 1, 10, 5, key='top_n_ngrams')
             if st.button("Generar N-Gramas"):
@@ -91,6 +91,50 @@ def analysis_page():
                     st.dataframe(df_ngramas)
                 else:
                     st.error("Por favor, preprocesa el texto antes de generar los n-gramas.")
+        
+        # Columnas para sentimientos y generar grafo
+        col1, col2 = st.columns(2)
+
+        with col1:
+            # Segmento de Análisis de Sentimientos
+            st.header("Sentimientos")
+            if st.button("Generar Análisis de Sentimientos"):
+                if 'Texto Procesado' in df.columns:
+                    resultados_sentimientos = sentimientos(df['Texto Procesado'].tolist())
+                    st.write(resultados_sentimientos)  # Asume que 'sentimientos' devuelve algo que streamlit puede mostrar directamente
+                else:
+                    st.error("Por favor, preprocesa el texto antes de realizar el análisis de sentimientos.")
+        with col2:
+            # Segmento para Generar Grafo
+            st.header("Grafo")
+            if st.button("Generar Grafo"):
+                if 'Texto Procesado' in df.columns:
+                    figura_grafo = generar_grafo(df['Texto Procesado'].tolist())  # Asume que esta función devuelve una figura de grafo
+                    st.pyplot(figura_grafo)
+                else:
+                    st.error("Por favor, preprocesa el texto antes de generar el grafo.")
+        # Columnas para sentimientos y generar grafo
+        col1, col2 = st.columns(2)
+
+        with col1:            
+            # Segmento para generar temas
+            st.header("Temas")
+            # Input para número de temas a generar
+            num_temas = st.number_input("Número de temas a generar:", min_value=1, value=5, step=1, key='num_temas')
+            if st.button("Generar Temas"):
+                if 'Texto Procesado' in df.columns:
+                    # Asumiendo que todas las frases corregidas están en df['Corregidos']
+                    todas_las_frases = " ".join(df['Corregidos'].tolist())
+                    # Llamar a la función que interactúa con ChatGPT para generar temas
+                    # Esta función debería retornar un nuevo DataFrame con las frases y sus temas asignados
+                    df_temas = generar_temas(todas_las_frases, num_temas, modelo_seleccionado)
+                    st.session_state['df_temas'] = df_temas  # Opcional: Guardar el nuevo DataFrame en el estado de la sesión
+                    st.dataframe(df_temas)
+                else:
+                    st.error("Por favor, asegúrate de que el texto ha sido preprocesado.")
+                    
+        with col2:
+            pass
     else:
         st.write("Carga y procesa datos en la pestaña 'Carga de Datos' para habilitar el análisis.")
 

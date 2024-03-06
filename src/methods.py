@@ -92,3 +92,6 @@ def generar_temas(texto: str, n_temas: int, modelo: str) -> pd.DataFrame:
 
 def sentimientos():
     pass
+
+def generar_grafo():
+    pass
