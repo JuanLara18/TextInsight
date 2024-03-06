@@ -10,6 +10,9 @@ import spacy
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
+import Levenshtein as lev
 
 from src.connection import generar_respuesta  # Asegúrate de que el import sea correcto, podría ser .connection dependiendo de tu estructura
 
