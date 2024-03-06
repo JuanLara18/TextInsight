@@ -50,13 +50,17 @@ def calculate_top_n_grams(texto_procesado: List[str], n: int, top_n: int = 10) -
     return n_grams_counts.most_common(top_n)
 
 def generate_wordcloud(frases: List[str]):
-    """Genera y devuelve una nube de palabras a partir de una lista de frases."""
+    """Genera y devuelve una nube de palabras a partir de una lista de frases, con fondo blanco y mejorada gráficamente."""
     texto = ' '.join(frases)
-    wordcloud = WordCloud(width=1000, height=500).generate(texto)
+    
+    # Crear una nube de palabras con fondo blanco y especificando algunas configuraciones adicionales
+    wordcloud = WordCloud(width=2048, height=1080, background_color='white', colormap='viridis').generate(texto)
+    
     fig = plt.figure(figsize=(15,8))
-    plt.imshow(wordcloud)
+    plt.imshow(wordcloud, interpolation='bilinear') # Usar interpolación bilinear para suavizar los bordes de las palabras
     plt.axis("off")
-    plt.close()
+    plt.show() # Muestra la figura en lugar de cerrarla para poder visualizarla directamente
+    
     return fig
 
 def corregir_frase(frase: str) -> str:
@@ -85,3 +89,6 @@ def generar_temas(texto: str, n_temas: int, modelo: str) -> pd.DataFrame:
     
     df_temas = pd.DataFrame({'Frase': texto.split('. '), 'Tema': [temas[i % n_temas] for i in range(len(texto.split('. ')))]})
     return df_temas
+
+def sentimientos():
+    pass

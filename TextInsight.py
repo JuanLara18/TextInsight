@@ -1,7 +1,7 @@
 # main.py
 import streamlit as st
 
-st.set_page_config(page_title='TextInsight', page_icon='TextInsight_logo_2.jpg')
+st.set_page_config(page_title='TextInsight', page_icon='logo.png')
 
 from src.gui import run_app
 

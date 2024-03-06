@@ -51,64 +51,46 @@ def data_loading_page():
 # Función para la página de análisis
 def analysis_page():
     st.title("Análisis")
-    
+
     if 'df_procesado' in st.session_state:
         df = st.session_state['df_procesado']
-        
-        # Botón para preprocesar el texto
-        if st.button("Preprocesar Texto"):
-            if 'Texto Procesado' not in df.columns:
-                df = preparar_datos_para_analisis(df)
-                st.session_state['df_procesado'] = df
-                st.success("Texto preprocesado con éxito.")
-            else:
-                st.info("El texto ya ha sido preprocesado.")
 
-        # Configuración de columnas para la interfaz de usuario
-        col1, col2, col3 = st.columns([2,1,2])
+        # Utiliza st.container para agrupar preprocesamiento y visualizaciones
+        with st.container():
+            st.header("Preprocesamiento")
+            if st.button("Preprocesar Texto"):
+                if 'Texto Procesado' not in df.columns:
+                    df = preparar_datos_para_analisis(df)
+                    st.session_state['df_procesado'] = df
+                    st.success("Texto preprocesado con éxito.")
+                else:
+                    st.info("El texto ya ha sido preprocesado.")
+
+        # Generación de nube de palabras y n-gramas en columnas
+        col1, col2 = st.columns(2)
+
         with col1:
-            # Input para especificar el valor de n para n-gramas
-            n_value = st.number_input("Especifica el valor de n para los n-gramas", min_value=1, value=2, key='n_value_ngrams')
+            st.header("Nube de Palabras")
+            if st.button("Generar Nube de Palabras"):
+                if 'Texto Procesado' in df.columns:
+                    texto_procesado_para_nube = ' '.join(df['Texto Procesado'].tolist())
+                    fig = generate_wordcloud([texto_procesado_para_nube])
+                    st.pyplot(fig)
+                else:
+                    st.error("Por favor, preprocesa el texto antes de generar la nube de palabras.")
+
         with col2:
-            # Slider para seleccionar cuántos n-gramas mostrar
+            st.header("Análisis de N-Gramas")
+            n_value = st.number_input("Especifica el valor de n para los n-gramas", min_value=1, value=2, key='n_value_ngrams')
             top_n = st.slider("Selecciona cuántos n-gramas más comunes mostrar:", 1, 10, 5, key='top_n_ngrams')
-        with col3:
-            # Botón para generar n-gramas
-            generate_ngram = st.button("Generar N-Gramas")
-
-        # Generación de n-gramas y nube de palabras
-        if generate_ngram:
-            if 'Texto Procesado' in df.columns:
-                texto_procesado_para_ngramas = df['Texto Procesado'].tolist()
-                ngramas_resultado = calculate_top_n_grams(texto_procesado_para_ngramas, n_value, top_n)
-                df_ngramas = ngramas_a_dataframe(ngramas_resultado)
-                st.dataframe(df_ngramas)
-            else:
-                st.error("Por favor, preprocesa el texto antes de generar los n-gramas.")
-
-        if st.button("Generar Nube de Palabras"):
-            if 'Texto Procesado' in df.columns:
-                texto_procesado_para_nube = ' '.join(df['Texto Procesado'].tolist())
-                fig = generate_wordcloud([texto_procesado_para_nube])
-                st.pyplot(fig)
-            else:
-                st.error("Por favor, preprocesa el texto antes de generar la nube de palabras.")
-                
-        # Input para número de temas a generar
-        num_temas = st.number_input("Número de temas a generar:", min_value=1, value=5, step=1, key='num_temas')
-
-        # Botón para generar temas
-        if st.button("Generar Temas"):
-            if 'Texto Procesado' in df.columns:
-                # Asumiendo que todas las frases corregidas están en df['Corregidos']
-                todas_las_frases = " ".join(df['Corregidos'].tolist())
-                # Llamar a la función que interactúa con ChatGPT para generar temas
-                # Esta función debería retornar un nuevo DataFrame con las frases y sus temas asignados
-                df_temas = generar_temas(todas_las_frases, num_temas, modelo_seleccionado)
-                st.session_state['df_temas'] = df_temas  # Opcional: Guardar el nuevo DataFrame en el estado de la sesión
-                st.dataframe(df_temas)
-            else:
-                st.error("Por favor, asegúrate de que el texto ha sido preprocesado.")
+            if st.button("Generar N-Gramas"):
+                if 'Texto Procesado' in df.columns:
+                    texto_procesado_para_ngramas = df['Texto Procesado'].tolist()
+                    ngramas_resultado = calculate_top_n_grams(texto_procesado_para_ngramas, n_value, top_n)
+                    df_ngramas = ngramas_a_dataframe(ngramas_resultado)
+                    st.dataframe(df_ngramas)
+                else:
+                    st.error("Por favor, preprocesa el texto antes de generar los n-gramas.")
     else:
         st.write("Carga y procesa datos en la pestaña 'Carga de Datos' para habilitar el análisis.")
 
