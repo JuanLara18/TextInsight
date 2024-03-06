@@ -28,14 +28,25 @@ def welcome_page():
 def data_loading_page():
     st.title("Carga de Datos")
     uploaded_file = st.file_uploader("Carga un archivo (xlsx, csv, sav, txt):", type=['xlsx', 'csv', 'sav', 'txt'])
+    if uploaded_file is not None:
+        st.success("Datos cargados correctamente. Utiliza 'Corregir Datos' para aplicar correcciones.")
     
+    st.title("Corrección de Datos")
     if uploaded_file is not None:
         df = load_and_extract_data(uploaded_file)
         if df is not None:
-            if st.button("Corregir Datos"):
-                # Corrige frases originales y actualiza el estado de sesión
-                df['Corregidos'] = corregir_frases(df['Originales'].tolist())
-                st.session_state['df_procesado'] = df
+            
+            col1, col2 = st.columns(2)
+                
+            with col1:
+                sensibilidad = st.slider("Sensibilidad de la corrección:", 0, 10, 5, 1)
+            with col2:
+                with st.container():
+                    if st.button("Corregir Datos"):
+                        # Corrige frases originales y actualiza el estado de sesión
+                        df['Corregidos'] = corregir_frases(df['Originales'].tolist(), sensibilidad)
+                        st.session_state['df_procesado'] = df        
+               
 
             # Slider para seleccionar cuántas filas mostrar
             num_rows = len(df)
@@ -44,7 +55,7 @@ def data_loading_page():
             # Muestra las frases originales y corregidas
             df_mostrar = st.session_state.get('df_procesado', df)
             st.write(df_mostrar[['Originales', 'Corregidos']].head(slider_val))
-            st.success("Datos cargados correctamente. Utiliza 'Corregir Datos' para aplicar correcciones.")
+            
         else:
             st.error("Error al cargar los datos. Asegúrate de que el formato del archivo es correcto.")
 
@@ -138,13 +149,32 @@ def analysis_page():
     else:
         st.write("Carga y procesa datos en la pestaña 'Carga de Datos' para habilitar el análisis.")
 
+def export_page():
+    st.write("Acá vamos tener los parámetros y exportar todos los resultados de acuerdo a los parámetros dados")
+    
+def prepreocess_page():
+    st.title("Preprocesamiento de los datos")
+    st.write("Breve explicación")
+    
+    # Utiliza st.container para agrupar preprocesamiento y visualizaciones
+    with st.container():
+        st.header("Preprocesamiento")
+        if st.button("Preprocesar Texto"):
+            if 'Texto Procesado' not in df.columns:
+                df = preparar_datos_para_analisis(df)
+                st.session_state['df_procesado'] = df
+                st.success("Texto preprocesado con éxito.")
+            else:
+                st.info("El texto ya ha sido preprocesado.")
 
 def run_app():
-    page = st.sidebar.radio("Navegación", ["Bienvenida", "Carga de Datos", "Análisis"])
+    page = st.sidebar.radio("Navegación", ["Inicio", "Taller de Datos","Análisis de datos", "Exportar resultados"])
 
-    if page == "Bienvenida":
+    if page == "Inicio":
         welcome_page()
-    elif page == "Carga de Datos":
+    elif page == "Taller de Datos":
         data_loading_page()
-    elif page == "Análisis":
+    elif page == "Análisis de datos":
         analysis_page()
+    elif page == "Exportar resultados":
+        export_page()

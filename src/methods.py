@@ -67,7 +67,7 @@ def corregir_frase(frase: str) -> str:
     """Función placeholder para corrección de frases. Actualmente devuelve la entrada sin cambios."""
     return frase
 
-def corregir_frases(frases: List[str]) -> List[str]:
+def corregir_frases(frases: List[str], sensibilidad) -> List[str]:
     """Aplica corrección a cada frase en la lista."""
     return [corregir_frase(frase) for frase in frases]
 
