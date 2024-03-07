@@ -4,11 +4,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import unicodedata
 import re
-import nltk
 import spacy
 import Levenshtein as lev
 
-from itertools import chain
+# from itertools import chain
 from typing import List
 from nltk.util import ngrams
 from collections import Counter

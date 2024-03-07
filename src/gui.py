@@ -1,6 +1,6 @@
 # src/gui.py
 import streamlit as st
-from .controllers import load_and_extract_data, preparar_datos_para_analisis
+from .controllers import distancias_palabras, load_and_extract_data, preparar_datos_para_analisis
 # Asegúrate de que el nombre de la función esté correcto según methods.py
 from .methods import calculate_top_n_grams, generate_wordcloud, corregir_frases, ngramas_a_dataframe, generar_temas, generar_grafo, sentimientos
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
@@ -47,12 +47,12 @@ def data_loading_page():
                         # Corrige frases originales y actualiza el estado de sesión
                         df['Corregidos'] = corregir_frases(df['Originales'].tolist(), sensibilidad) # Agregado directamente
                         st.session_state['df_procesado'] = df      
-                        st.success("Texto corregido con éxito.")
+                        st.success("Textos corregidos con éxito.")
                     
                     if st.button("Preprocesar Texto"):
                         df = preparar_datos_para_analisis(df) # Agregado por la función en (Procesado)
                         st.session_state['df_procesado'] = df
-                        st.success("Texto preprocesado con éxito.")
+                        st.success("Textos preprocesados con éxito.")
                
             st.header("Visualización de Datos")
             # Slider para seleccionar cuántas filas mostrar
@@ -61,8 +61,13 @@ def data_loading_page():
             
             # Muestra las frases originales y corregidas
             df_mostrar = st.session_state.get('df_procesado', df)
-            if "Procesado" in df_mostrar.columns:
-                st.write(df_mostrar[['Originales', 'Corregidos', "Procesado"]].head(slider_val))
+            if "Procesados" in df_mostrar.columns:
+                st.write(df_mostrar[['Originales', 'Corregidos', "Procesados"]].head(slider_val))
+                st.subheader("Análisis de los cambios")
+                st.markdown("- La Distancia de Levenshtein es como contar cuántos errores de tipeo necesitarías corregir para hacer que un texto se convierta en el otro; menor número, más parecidos son. [Más información](https://en.wikipedia.org/wiki/Levenshtein_distance)")
+                st.markdown("- La Distancia de Jaccard es como mirar dos listas de palabras y calcular qué porcentaje comparten; un porcentaje más alto significa que los textos tienen más palabras en común. [Más información](https://en.wikipedia.org/wiki/Jaccard_index)")
+                st.markdown("- La Similitud del Coseno con TF-IDF evalúa qué tan parecidos son dos textos en cuanto a sus temas principales, no solo por las palabras exactas que usan. Un valor cercano a 1 indica que los textos tratan sobre temas muy similares, mientras que un valor cercano a 0 sugiere que hablan de temas distintos. [Más información sobre Similitud del Coseno](https://en.wikipedia.org/wiki/Cosine_similarity) y [TF-IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf)")
+                st.write(distancias_palabras(df_mostrar))
             else:
                 st.write(df_mostrar[['Originales', 'Corregidos']].head(slider_val))
             

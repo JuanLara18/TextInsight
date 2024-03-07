@@ -1,5 +1,6 @@
 # src/controllers.py
 import pandas as pd
+import numpy as np
 from .methods import preprocesar_texto, corregir_frase, distancia_levenshtein, distancia_jaccard, similitud_coseno_tfidf
 
 # Carga y preparación de los datos ----------------------------
@@ -56,7 +57,7 @@ def preparar_datos_para_analisis(df):
     - DataFrame original con una columna adicional 'Texto Procesado'.
     """
     # Preprocesar texto corregido para análisis
-    df['Procesado'] = df['Corregidos'].apply(preprocesar_texto)
+    df['Procesados'] = df['Corregidos'].apply(preprocesar_texto)
     return df
 
 # Distancias -------------------------------------------------
@@ -65,19 +66,36 @@ def distancias_palabras(df):
     resultados = []
     
     # Calcula distancia de Levenshtein
-    levenshtein_o_c = np.mean([distancia_levenshtein(o, c) for o, c in zip(df['Original'], df['Corregido'])])
-    levenshtein_c_p = np.mean([distancia_levenshtein(c, p) for c, p in zip(df['Corregido'], df['Procesado'])])
+    levenshtein_o_c = np.mean([distancia_levenshtein(o, c) for o, c in zip(df['Originales'], df['Corregidos'])])
+    levenshtein_c_p = np.mean([distancia_levenshtein(c, p) for c, p in zip(df['Corregidos'], df['Procesados'])])
+    levenshtein_o_p = np.mean([distancia_levenshtein(o, p) for o, p in zip(df['Originales'], df['Procesados'])])  # Nueva línea
     
     # Calcula distancia de Jaccard
-    jaccard_o_c = np.mean([distancia_jaccard(o, c) for o, c in zip(df['Original'], df['Corregido'])])
-    jaccard_c_p = np.mean([distancia_jaccard(c, p) for c, p in zip(df['Corregido'], df['Procesado'])])
-    
+    jaccard_o_c = np.mean([distancia_jaccard(o, c) for o, c in zip(df['Originales'], df['Corregidos'])])
+    jaccard_c_p = np.mean([distancia_jaccard(c, p) for c, p in zip(df['Corregidos'], df['Procesados'])])
+    jaccard_o_p = np.mean([distancia_jaccard(o, p) for o, p in zip(df['Originales'], df['Procesados'])])  
     # Prepara TF-IDF + Similitud del coseno
-    cosine_o_c = np.mean([similitud_coseno_tfidf(o, c) for o, c in zip(df['Original'], df['Corregido'])])
-    cosine_c_p = np.mean([similitud_coseno_tfidf(c, p) for c, p in zip(df['Corregido'], df['Procesado'])])
+    cosine_o_c = np.mean([similitud_coseno_tfidf(o, c) for o, c in zip(df['Originales'], df['Corregidos'])])
+    cosine_c_p = np.mean([similitud_coseno_tfidf(c, p) for c, p in zip(df['Corregidos'], df['Procesados'])])
+    cosine_o_p = np.mean([similitud_coseno_tfidf(o, p) for o, p in zip(df['Originales'], df['Procesados'])])  
     
-    resultados.append({"Método": "Levenshtein", "Original a Corregido": levenshtein_o_c, "Corregido a Procesado": levenshtein_c_p})
-    resultados.append({"Método": "Jaccard", "Original a Corregido": jaccard_o_c, "Corregido a Procesado": jaccard_c_p})
-    resultados.append({"Método": "TF-IDF + Cosine", "Original a Corregido": cosine_o_c, "Corregido a Procesado": cosine_c_p})
+    resultados.append({
+        "Método": "Levenshtein", 
+        "Originales a Corregidos": levenshtein_o_c, 
+        "Corregidos a Procesados": levenshtein_c_p,
+        "Originales a Procesados": levenshtein_o_p  
+    })
+    resultados.append({
+        "Método": "Jaccard", 
+        "Originales a Corregidos": jaccard_o_c, 
+        "Corregidos a Procesados": jaccard_c_p,
+        "Originales a Procesados": jaccard_o_p  
+    })
+    resultados.append({
+        "Método": "TF-IDF + Cosine", 
+        "Originales a Corregidos": cosine_o_c, 
+        "Corregidos a Procesados": cosine_c_p,
+        "Originales a Procesados": cosine_o_p 
+    })
     
     return pd.DataFrame(resultados)
