@@ -1,6 +1,8 @@
 # src/controllers.py
 import pandas as pd
-from .methods import preprocesar_texto, corregir_frase, generate_wordcloud
+from .methods import preprocesar_texto, corregir_frase, distancia_levenshtein, distancia_jaccard, similitud_coseno_tfidf
+
+# Carga y preparación de los datos ----------------------------
 
 def load_and_extract_data(file):
     """
@@ -56,3 +58,26 @@ def preparar_datos_para_analisis(df):
     # Preprocesar texto corregido para análisis
     df['Procesado'] = df['Corregidos'].apply(preprocesar_texto)
     return df
+
+# Distancias -------------------------------------------------
+
+def distancias_palabras(df):
+    resultados = []
+    
+    # Calcula distancia de Levenshtein
+    levenshtein_o_c = np.mean([distancia_levenshtein(o, c) for o, c in zip(df['Original'], df['Corregido'])])
+    levenshtein_c_p = np.mean([distancia_levenshtein(c, p) for c, p in zip(df['Corregido'], df['Procesado'])])
+    
+    # Calcula distancia de Jaccard
+    jaccard_o_c = np.mean([distancia_jaccard(o, c) for o, c in zip(df['Original'], df['Corregido'])])
+    jaccard_c_p = np.mean([distancia_jaccard(c, p) for c, p in zip(df['Corregido'], df['Procesado'])])
+    
+    # Prepara TF-IDF + Similitud del coseno
+    cosine_o_c = np.mean([similitud_coseno_tfidf(o, c) for o, c in zip(df['Original'], df['Corregido'])])
+    cosine_c_p = np.mean([similitud_coseno_tfidf(c, p) for c, p in zip(df['Corregido'], df['Procesado'])])
+    
+    resultados.append({"Método": "Levenshtein", "Original a Corregido": levenshtein_o_c, "Corregido a Procesado": levenshtein_c_p})
+    resultados.append({"Método": "Jaccard", "Original a Corregido": jaccard_o_c, "Corregido a Procesado": jaccard_c_p})
+    resultados.append({"Método": "TF-IDF + Cosine", "Original a Corregido": cosine_o_c, "Corregido a Procesado": cosine_c_p})
+    
+    return pd.DataFrame(resultados)
