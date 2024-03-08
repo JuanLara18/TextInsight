@@ -2,7 +2,7 @@
 import streamlit as st
 from .controllers import distancias_palabras, load_and_extract_data, preparar_datos_para_analisis
 # Asegúrate de que el nombre de la función esté correcto según methods.py
-from .methods import calculate_top_n_grams, generate_wordcloud, corregir_frases, ngramas_a_dataframe, generar_temas, generar_grafo, sentimientos
+from .methods import calculate_top_n_grams, corregir_frase, generate_wordcloud, corregir_frases, ngramas_a_dataframe, generar_temas, generar_grafo, sensibilidad_a_comando, sentimientos
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
 
 modelo_seleccionado = "gpt-3.5-turbo"
@@ -42,12 +42,13 @@ def data_loading_page():
             with col1:
                 sensibilidad = st.slider("Sensibilidad de la corrección:", 0, 10, 5, 1)
             with col2:
-                with st.container():
-                    if st.button("Corregir Datos"):
-                        # Corrige frases originales y actualiza el estado de sesión
-                        df['Corregidos'] = corregir_frases(df['Originales'].tolist(), sensibilidad)
-                        st.session_state['df_procesado'] = df      
-                        st.success("Textos corregidos con éxito.")
+                if st.button("Corregir Datos"):
+                    # Prepara el comando de sensibilidad para la corrección basado en la selección del usuario
+                    comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
+
+                    df['Corregidos'] = df['Originales'].apply(lambda frase: corregir_frase(frase, comando_sensibilidad))
+                    st.session_state['df_procesado'] = df      
+                    st.success("Textos corregidos con éxito.")
                     
                     if st.button("Preprocesar Texto"):
                         df = preparar_datos_para_analisis(df) # Agregado por la función en (Procesado)

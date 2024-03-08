@@ -77,7 +77,9 @@ def corregir_frases(frases: List[str], sensibilidad: int) -> List[str]:
     # Convertimos el nivel de sensibilidad a un comando entendible para el modelo
     comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
     
+    # Asegúrate de pasar el comando de sensibilidad a la función corregir_frase
     return [corregir_frase(frase, comando_sensibilidad) for frase in frases]
+
 
 # N-gramas ------------------------------------------------------------
 
