@@ -9,7 +9,7 @@ openai.api_key = api_key  # Inicializa la API key al cargar el módulo para simp
 
 import openai
 
-def generar_respuesta(modelo_seleccionado, prompt, max_tokens=100):
+def generar_respuesta(modelo_seleccionado, prompt, max_tokens=500):
     response = openai.ChatCompletion.create(
         model=modelo_seleccionado,
         messages=[{"role": "system", "content": "Ejecutar la siguiente tarea"},

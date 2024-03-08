@@ -1,11 +1,12 @@
 # src/gui.py
 import streamlit as st
 from .controllers import distancias_palabras, load_and_extract_data, preparar_datos_para_analisis
-# Asegúrate de que el nombre de la función esté correcto según methods.py
-from .methods import calculate_top_n_grams, corregir_frase, generate_wordcloud, corregir_frases, ngramas_a_dataframe, generar_temas, generar_grafo, sensibilidad_a_comando, sentimientos
+from .methods import calculate_top_n_grams, corregir_frase, generate_wordcloud, ngramas_a_dataframe, generar_temas, generar_grafo, sensibilidad_a_comando, sentimientos
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
 
 modelo_seleccionado = "gpt-3.5-turbo"
+sensibilidad = 5
+comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
 
 # Función para mostrar la página de bienvenida
 def welcome_page():
@@ -42,18 +43,14 @@ def data_loading_page():
             with col1:
                 sensibilidad = st.slider("Sensibilidad de la corrección:", 0, 10, 5, 1)
             with col2:
-                if st.button("Corregir Datos"):
+                if st.button("Corregir y Preprocesar Datos"):
                     # Prepara el comando de sensibilidad para la corrección basado en la selección del usuario
                     comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
 
-                    df['Corregidos'] = df['Originales'].apply(lambda frase: corregir_frase(frase, comando_sensibilidad))
+                    df['Corregidos'] = df['Originales'].apply(lambda frase: corregir_frase(frase, comando_sensibilidad, modelo_seleccionado))
+                    df = preparar_datos_para_analisis(df)
                     st.session_state['df_procesado'] = df      
-                    st.success("Textos corregidos con éxito.")
-                    
-                    if st.button("Preprocesar Texto"):
-                        df = preparar_datos_para_analisis(df) # Agregado por la función en (Procesado)
-                        st.session_state['df_procesado'] = df
-                        st.success("Textos preprocesados con éxito.")
+                    st.success("Textos corregidos y preprocesados con éxito.")
                
             st.header("Visualización de Datos")
             # Slider para seleccionar cuántas filas mostrar

@@ -38,9 +38,8 @@ def load_and_extract_data(file):
         # Asegurar que la primera columna se trate como 'Originales' para archivos no .txt
         if not file.name.endswith('.txt'):
             df.columns = ['Originales'] + df.columns.tolist()[1:]
-
         # Aplicar corrección a cada frase en 'Originales'
-        df['Corregidos'] = df['Originales'].apply(corregir_frase)
+        df['Corregidos'] = df['Originales']
 
         return df
     return None

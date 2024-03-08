@@ -63,22 +63,22 @@ def sensibilidad_a_comando(sensibilidad: int) -> str:
         9: "Corregir y sugerir mejoras en claridad y estilo para hacer el texto más atractivo.",
         10: "Realizar una corrección exhaustiva, incluyendo ortografía, gramática, estilo, claridad, y sugerir mejoras para optimizar la expresión del texto al máximo."
     }
-    return comandos.get(sensibilidad, "Realizar una corrección moderada.")  # Por defecto, si no se reconoce el nivel
+    return comandos.get(sensibilidad, "Realizar una corrección moderada.")
 
-def corregir_frase(frase: str, comando_sensibilidad: str) -> str:
+def corregir_frase(frase: str, comando_sensibilidad: str, modelo_seleccionado) -> str:
     """Función que corrige individualmente cada frase."""
     prompt = f"{comando_sensibilidad} Corrige la siguiente frase: {frase}"
     # Aquí, reemplaza 'modelo_seleccionado' con el identificador de tu modelo actual
-    respuesta_corregida = generar_respuesta('modelo_seleccionado', prompt)
+    respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt)
     return respuesta_corregida
 
-def corregir_frases(frases: List[str], sensibilidad: int) -> List[str]:
-    """Aplica corrección a cada frase en la lista basado en la sensibilidad."""
-    # Convertimos el nivel de sensibilidad a un comando entendible para el modelo
-    comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
+# def corregir_frases(frases: List[str], sensibilidad: int) -> List[str]:
+#     """Aplica corrección a cada frase en la lista basado en la sensibilidad."""
+#     # Convertimos el nivel de sensibilidad a un comando entendible para el modelo
+#     comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
     
-    # Asegúrate de pasar el comando de sensibilidad a la función corregir_frase
-    return [corregir_frase(frase, comando_sensibilidad) for frase in frases]
+#     # Asegúrate de pasar el comando de sensibilidad a la función corregir_frase
+#     return [corregir_frase(frase, comando_sensibilidad) for frase in frases]
 
 
 # N-gramas ------------------------------------------------------------
