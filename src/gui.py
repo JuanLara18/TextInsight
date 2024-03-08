@@ -5,7 +5,7 @@ from .controllers import distancias_palabras, load_and_extract_data, preparar_da
 from .methods import calculate_top_n_grams, generate_wordcloud, corregir_frases, ngramas_a_dataframe, generar_temas, generar_grafo, sentimientos
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
 
-modelo_seleccionado = ""
+modelo_seleccionado = "gpt-3.5-turbo"
 
 # Función para mostrar la página de bienvenida
 def welcome_page():
@@ -129,47 +129,29 @@ def analysis_page():
                 else:
                     st.error("Por favor, preprocesa el texto antes de generar el grafo.")
         # Columnas para sentimientos y generar grafo
-        col1, col2 = st.columns(2)
-
-        with col1:            
-            # Segmento para generar temas
-            st.header("Temas")
-            # Input para número de temas a generar
-            num_temas = st.number_input("Número de temas a generar:", min_value=1, value=5, step=1, key='num_temas')
-            if st.button("Generar Temas"):
-                if 'Procesados' in df.columns:
-                    # Asumiendo que todas las frases corregidas están en df['Corregidos']
-                    todas_las_frases = " ".join(df['Corregidos'].tolist())
-                    # Llamar a la función que interactúa con ChatGPT para generar temas
-                    # Esta función debería retornar un nuevo DataFrame con las frases y sus temas asignados
-                    df_temas = generar_temas(todas_las_frases, num_temas, modelo_seleccionado)
-                    st.session_state['df_temas'] = df_temas  # Opcional: Guardar el nuevo DataFrame en el estado de la sesión
-                    st.dataframe(df_temas)
-                else:
-                    st.error("Por favor, asegúrate de que el texto ha sido preprocesado.")
+          
+        # Segmento para generar temas
+        st.header("Temas")
+        # Input para número de temas a generar
+        num_temas = st.number_input("Número de temas a generar:", min_value=1, value=5, step=1, key='num_temas')
+        if st.button("Generar Temas"):
+            if 'Procesados' in df.columns:
+                # Asumiendo que todas las frases corregidas están en df['Corregidos']
+                todas_las_frases = " ".join(df['Corregidos'].tolist())
+                # Llamar a la función que interactúa con ChatGPT para generar temas
+                # Esta función debería retornar un nuevo DataFrame con las frases y sus temas asignados
+                df_temas = generar_temas(todas_las_frases, num_temas, modelo_seleccionado)
+                st.session_state['df_temas'] = df_temas  # Opcional: Guardar el nuevo DataFrame en el estado de la sesión
+                st.dataframe(df_temas)
+            else:
+                st.error("Por favor, asegúrate de que el texto ha sido preprocesado.")
                     
-        with col2:
-            pass
     else:
         st.write("Carga y procesa datos en la pestaña 'Carga de Datos' para habilitar el análisis.")
 
 def export_page():
+    st.title("Exportar Resultados")
     st.write("Acá vamos tener los parámetros y exportar todos los resultados de acuerdo a los parámetros dados")
-    
-def prepreocess_page():
-    st.title("Preprocesamiento de los datos")
-    st.write("Breve explicación")
-    
-    # Utiliza st.container para agrupar preprocesamiento y visualizaciones
-    with st.container():
-        st.header("Preprocesamiento")
-        if st.button("Preprocesar Texto"):
-            if 'Procesados' not in df.columns:
-                df = preparar_datos_para_analisis(df)
-                st.session_state['df_procesado'] = df
-                st.success("Texto preprocesado con éxito.")
-            else:
-                st.info("El texto ya ha sido preprocesado.")
 
 def run_app():
     page = st.sidebar.radio("Navegación", ["Inicio", "Taller de Datos","Análisis de datos", "Exportar resultados"])
