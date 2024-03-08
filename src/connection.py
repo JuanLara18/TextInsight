@@ -10,24 +10,12 @@ openai.api_key = api_key  # Inicializa la API key al cargar el módulo para simp
 import openai
 
 def generar_respuesta(modelo_seleccionado, prompt, max_tokens=100):
-    """
-    Genera una respuesta utilizando el modelo de OpenAI especificado, adecuado para modelos de chat.
-    
-    Args:
-    - modelo_seleccionado: El identificador del modelo de OpenAI a usar.
-    - prompt: El prompt para el modelo.
-    - max_tokens: El número máximo de tokens en la respuesta.
-    
-    Returns:
-    - La respuesta generada por el modelo.
-    """
     response = openai.ChatCompletion.create(
-        model=modelo_seleccionado,  # Asegúrate de que esta línea esté presente y correctamente formateada
+        model=modelo_seleccionado,
         messages=[{"role": "system", "content": "Ejecutar la siguiente tarea"},
                   {"role": "user", "content": prompt}],
         max_tokens=max_tokens
     )
-    # Ajusta la siguiente línea según la estructura de la respuesta de la API para los completions de chat
     return response['choices'][0]['message']['content'].strip()
 
 

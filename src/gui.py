@@ -32,8 +32,8 @@ def data_loading_page():
     if uploaded_file is not None:
         st.success("Datos cargados correctamente.")
     
-    st.header("Corrección y Preprocesamiento de Datos")
     if uploaded_file is not None:
+        st.header("Corrección y Preprocesamiento de Datos")
         df = load_and_extract_data(uploaded_file)
         if df is not None:
             
@@ -45,7 +45,7 @@ def data_loading_page():
                 with st.container():
                     if st.button("Corregir Datos"):
                         # Corrige frases originales y actualiza el estado de sesión
-                        df['Corregidos'] = corregir_frases(df['Originales'].tolist(), sensibilidad) # Agregado directamente
+                        df['Corregidos'] = corregir_frases(df['Originales'].tolist(), sensibilidad)
                         st.session_state['df_procesado'] = df      
                         st.success("Textos corregidos con éxito.")
                     
