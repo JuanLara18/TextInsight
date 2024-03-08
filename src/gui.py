@@ -87,8 +87,8 @@ def analysis_page():
         with col1:
             st.header("Nube de Palabras")
             if st.button("Generar Nube de Palabras"):
-                if 'Texto Procesado' in df.columns:
-                    texto_procesado_para_nube = ' '.join(df['Texto Procesado'].tolist())
+                if 'Procesados' in df.columns:
+                    texto_procesado_para_nube = ' '.join(df['Procesados'].tolist())
                     fig = generate_wordcloud([texto_procesado_para_nube])
                     st.pyplot(fig)
                 else:
@@ -99,8 +99,8 @@ def analysis_page():
             n_value = st.number_input("Especifica el valor de n para los n-gramas", min_value=1, value=2, key='n_value_ngrams')
             top_n = st.slider("Selecciona cuántos n-gramas más comunes mostrar:", 1, 10, 5, key='top_n_ngrams')
             if st.button("Generar N-Gramas"):
-                if 'Texto Procesado' in df.columns:
-                    texto_procesado_para_ngramas = df['Texto Procesado'].tolist()
+                if 'Procesados' in df.columns:
+                    texto_procesado_para_ngramas = df['Procesados'].tolist()
                     ngramas_resultado = calculate_top_n_grams(texto_procesado_para_ngramas, n_value, top_n)
                     df_ngramas = ngramas_a_dataframe(ngramas_resultado)
                     st.dataframe(df_ngramas)
@@ -114,8 +114,8 @@ def analysis_page():
             # Segmento de Análisis de Sentimientos
             st.header("Sentimientos")
             if st.button("Generar Análisis de Sentimientos"):
-                if 'Texto Procesado' in df.columns:
-                    resultados_sentimientos = sentimientos(df['Texto Procesado'].tolist())
+                if 'Procesados' in df.columns:
+                    resultados_sentimientos = sentimientos(df['Procesados'].tolist())
                     st.write(resultados_sentimientos)  # Asume que 'sentimientos' devuelve algo que streamlit puede mostrar directamente
                 else:
                     st.error("Por favor, preprocesa el texto antes de realizar el análisis de sentimientos.")
@@ -123,8 +123,8 @@ def analysis_page():
             # Segmento para Generar Grafo
             st.header("Grafo")
             if st.button("Generar Grafo"):
-                if 'Texto Procesado' in df.columns:
-                    figura_grafo = generar_grafo(df['Texto Procesado'].tolist())  # Asume que esta función devuelve una figura de grafo
+                if 'Procesados' in df.columns:
+                    figura_grafo = generar_grafo(df['Procesados'].tolist())  # Asume que esta función devuelve una figura de grafo
                     st.pyplot(figura_grafo)
                 else:
                     st.error("Por favor, preprocesa el texto antes de generar el grafo.")
@@ -137,7 +137,7 @@ def analysis_page():
             # Input para número de temas a generar
             num_temas = st.number_input("Número de temas a generar:", min_value=1, value=5, step=1, key='num_temas')
             if st.button("Generar Temas"):
-                if 'Texto Procesado' in df.columns:
+                if 'Procesados' in df.columns:
                     # Asumiendo que todas las frases corregidas están en df['Corregidos']
                     todas_las_frases = " ".join(df['Corregidos'].tolist())
                     # Llamar a la función que interactúa con ChatGPT para generar temas
@@ -164,7 +164,7 @@ def prepreocess_page():
     with st.container():
         st.header("Preprocesamiento")
         if st.button("Preprocesar Texto"):
-            if 'Texto Procesado' not in df.columns:
+            if 'Procesados' not in df.columns:
                 df = preparar_datos_para_analisis(df)
                 st.session_state['df_procesado'] = df
                 st.success("Texto preprocesado con éxito.")

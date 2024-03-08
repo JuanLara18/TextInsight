@@ -1,6 +1,6 @@
 streamlit
-openai
 pandas
 matplotlib
 spacy
 nltk
+openai==0.28

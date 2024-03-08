@@ -4,27 +4,18 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # Establece tu API key de OpenAI aquí. Considera usar variables de entorno para mejorar la seguridad.
-api_key = "tu_api_key"
+api_key = "sk-sa-ipsos-chile-jaime-vasquez-fPuvZVuufm9O2h8lOcoAT3BlbkFJxB5VafySZP9xoHZLlTij"
 openai.api_key = api_key  # Inicializa la API key al cargar el módulo para simplificar
 
 def generar_respuesta(modelo_seleccionado, prompt, max_tokens=100):
-    """
-    Genera una respuesta utilizando el modelo de OpenAI especificado.
-    
-    Args:
-    - modelo_seleccionado: El identificador del modelo de OpenAI a usar.
-    - prompt: El prompt para el modelo.
-    - max_tokens: El número máximo de tokens en la respuesta.
-    
-    Returns:
-    - La respuesta generada por el modelo.
-    """
-    response = openai.Completion.create(
-        engine=modelo_seleccionado,
-        prompt=prompt,
+    response = openai.ChatCompletion.create(
+        model=modelo_seleccionado,
+        messages=[{"role": "system", "content": "Chat seguimiento"},
+                  {"role": "user", "content": prompt}],
         max_tokens=max_tokens
     )
-    return response.choices[0].text.strip()
+    return response.choices[0].message['content'].strip()
+
 
 def obtener_descripcion_modelo(modelo_seleccionado):
     """
@@ -69,3 +60,9 @@ def generar_grafico_comparativo():
     plt.tight_layout()
     
     return plt
+
+modelo_seleccionado = "gpt-3.5-turbo"  # Asumiendo que este modelo está disponible en tu cuenta de OpenAI
+prompt = "¿Cuál es tu color favorito?"
+
+respuesta = generar_respuesta(modelo_seleccionado, prompt)
+print("Respuesta del modelo:", respuesta)
