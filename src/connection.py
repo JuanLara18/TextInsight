@@ -1,37 +1,58 @@
-# src/connections.py
 import openai
+import matplotlib.pyplot as plt
+import pandas as pd
 import os
-
 from dotenv import load_dotenv
 
+# Carga las variables de entorno desde el archivo especificado.
 load_dotenv('src/openai_api.env')
 
+# Obtener la clave API de OpenAI de las variables de entorno.
 api_key = os.getenv('OPENAI_API_KEY')
 
 if not api_key:
-    raise ValueError("No se encontró la clave API de OpenAI. Por favor, verifica el archivo de configuración.")
+    raise ValueError("No se encontró la clave API de OpenAI. "
+                     "Por favor, verifica el archivo de configuración.")
 
-openai.api_key = api_key  # Inicializa la API key al cargar el módulo para simplificar
+# Asigna la clave API a la configuración de OpenAI para su uso en todo el módulo.
+openai.api_key = api_key
+
 
 def generar_respuesta(modelo_seleccionado, prompt, max_tokens=500):
-    response = openai.ChatCompletion.create(
-        model=modelo_seleccionado,
-        messages=[{"role": "system", "content": "Ejecutar la siguiente tarea"},
-                  {"role": "user", "content": prompt}],
-        max_tokens=max_tokens
-    )
-    return response['choices'][0]['message']['content'].strip()
+    """
+    Genera una respuesta del modelo seleccionado de OpenAI dado un prompt específico.
+
+    Args:
+        modelo_seleccionado (str): El identificador del modelo de OpenAI a utilizar.
+        prompt (str): El prompt o texto de entrada para el modelo.
+        max_tokens (int): El máximo número de tokens a generar en la respuesta.
+
+    Returns:
+        str: La respuesta generada por el modelo.
+    """
+    try:
+        response = openai.ChatCompletion.create(
+            model=modelo_seleccionado,
+            messages=[
+                {"role": "system", "content": "Ejecutar la siguiente tarea"},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=max_tokens
+        )
+        return response['choices'][0]['message']['content'].strip()
+    except openai.error.OpenAIError as e:
+        raise openai.error.OpenAIError(f"Error al generar respuesta del modelo: {e}")
 
 
 def obtener_descripcion_modelo(modelo_seleccionado):
     """
-    Obtiene una descripción textual del modelo seleccionado.
-    
+    Devuelve una descripción del modelo de OpenAI basado en su identificador.
+
     Args:
-    - modelo_seleccionado: El identificador del modelo de OpenAI a describir.
-    
+        modelo_seleccionado (str): El identificador del modelo de OpenAI.
+
     Returns:
-    - Descripción del modelo seleccionado.
+        str: Descripción textual del modelo.
     """
     descripciones = {
         "gpt-3.5-turbo": "GPT-3.5-turbo: Óptimo para respuestas rápidas y eficientes en costos.",
@@ -40,15 +61,13 @@ def obtener_descripcion_modelo(modelo_seleccionado):
     }
     return descripciones.get(modelo_seleccionado, "Modelo no especificado")
 
-import matplotlib.pyplot as plt
-import pandas as pd
 
 def generar_grafico_comparativo():
     """
-    Genera y retorna un gráfico comparativo de los modelos GPT en varias categorías.
-    
+    Crea un gráfico comparativo de los modelos de GPT en términos de velocidad, precisión, costo y capacidad.
+
     Returns:
-    - Objeto plt con el gráfico generado.
+        matplotlib.pyplot: El objeto plt configurado con el gráfico comparativo.
     """
     datos = {
         'Modelos': ["GPT-3.5 Turbo", "GPT-4", "Davinci"],
@@ -58,7 +77,14 @@ def generar_grafico_comparativo():
         'Capacidad': [6, 9, 10]
     }
     df = pd.DataFrame(datos)
-    ax = df.plot(x='Modelos', kind='bar', stacked=False, title="Comparación de Modelos", figsize=(10, 6), legend=True, color=["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"])
+    
+    # Crear el gráfico
+    ax = df.plot(x='Modelos', kind='bar', stacked=False,
+                 title="Comparación de Modelos GPT",
+                 figsize=(10, 6), legend=True,
+                 color=["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"])
+    
+    # Configurar estilos y etiquetas
     ax.set_ylabel('Puntuaciones')
     ax.set_title('Comparación de Modelos GPT', fontsize=16, fontweight='bold', color='navy')
     ax.set_xticklabels(df['Modelos'], rotation=0, fontsize=12)

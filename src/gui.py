@@ -151,6 +151,8 @@ def export_page():
     st.title("Exportar Resultados")
     st.write("Acá vamos tener los parámetros y exportar todos los resultados de acuerdo a los parámetros dados")
 
+
+
 def run_app():
     page = st.sidebar.radio("Navegación", ["Inicio", "Taller de Datos","Análisis de datos", "Exportar resultados"])
 
