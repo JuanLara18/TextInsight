@@ -1,13 +1,17 @@
 # src/connections.py
 import openai
-import matplotlib.pyplot as plt
-import pandas as pd
+import os
 
-# Establece tu API key de OpenAI aquí. Considera usar variables de entorno para mejorar la seguridad.
-api_key = "sk-sa-ipsos-chile-jaime-vasquez-fPuvZVuufm9O2h8lOcoAT3BlbkFJxB5VafySZP9xoHZLlTij"
+from dotenv import load_dotenv
+
+load_dotenv('src/openai_api.env')
+
+api_key = os.getenv('OPENAI_API_KEY')
+
+if not api_key:
+    raise ValueError("No se encontró la clave API de OpenAI. Por favor, verifica el archivo de configuración.")
+
 openai.api_key = api_key  # Inicializa la API key al cargar el módulo para simplificar
-
-import openai
 
 def generar_respuesta(modelo_seleccionado, prompt, max_tokens=500):
     response = openai.ChatCompletion.create(
@@ -17,7 +21,6 @@ def generar_respuesta(modelo_seleccionado, prompt, max_tokens=500):
         max_tokens=max_tokens
     )
     return response['choices'][0]['message']['content'].strip()
-
 
 
 def obtener_descripcion_modelo(modelo_seleccionado):
@@ -36,6 +39,9 @@ def obtener_descripcion_modelo(modelo_seleccionado):
         "davinci": "Davinci: Muy capaz en comprensión y generación de texto complejo."
     }
     return descripciones.get(modelo_seleccionado, "Modelo no especificado")
+
+import matplotlib.pyplot as plt
+import pandas as pd
 
 def generar_grafico_comparativo():
     """

@@ -153,5 +153,3 @@ def similitud_coseno_tfidf(str1, str2):
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform([str1, str2])
     return cosine_similarity(tfidf_matrix)[0, 1]
-
-
