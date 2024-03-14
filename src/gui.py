@@ -10,6 +10,19 @@ comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
 
 # Función para mostrar la página de bienvenida
 def welcome_page():
+    
+     # Inicializa el estado si es necesario
+    if 'uploaded_file' not in st.session_state:
+        st.session_state['uploaded_file'] = None
+    if 'df' not in st.session_state:
+        st.session_state['df'] = None
+    if 'df_procesado' not in st.session_state:
+        st.session_state['df_procesado'] = None
+    if 'reprocess_data' not in st.session_state:
+        st.session_state['reprocess_data'] = False
+    if 'sensibilidad' not in st.session_state:
+        st.session_state['sensibilidad'] = 5
+    
     st.title("Bienvenido a TextInsight")
     # Lista de modelos disponibles para seleccionar
     st.write("Text Insight es una herramienta de análisis de texto impulsada por modelos de Lenguaje de Aprendizaje Profundo (LLM) de Inteligencia Artificial, diseñada para descifrar, interpretar y revelar patrones ocultos y tendencias significativas en datos textuales complejos.")
@@ -28,49 +41,56 @@ def welcome_page():
 # Función para cargar datos y corregir frases
 def data_loading_page():
     st.title("Taller de Datos")
-    st.header("Cargar de Datos")
-    uploaded_file = st.file_uploader("Carga un archivo (xlsx, csv, sav, txt):", type=['xlsx', 'csv', 'sav', 'txt'])
-    if uploaded_file is not None:
-        st.success("Datos cargados correctamente.")
     
+    # Carga de archivos
+    st.header("Cargar Datos")
+    uploaded_file = st.file_uploader("Carga un archivo:", type=['xlsx', 'csv', 'sav', 'txt'], key='uploaded_file')
+    
+    # Verifica si hay un archivo cargado
     if uploaded_file is not None:
-        st.header("Corrección y Preprocesamiento de Datos")
-        df = load_and_extract_data(uploaded_file)
-        if df is not None:
-            
-            col1, col2 = st.columns(2)
-                
-            with col1:
-                sensibilidad = st.slider("Sensibilidad de la corrección:", 0, 10, 5, 1)
-            with col2:
-                if st.button("Corregir y Preprocesar Datos"):
-                    # Prepara el comando de sensibilidad para la corrección basado en la selección del usuario
-                    comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
+        with st.spinner('Procesando datos...'):
+            st.session_state.df = load_and_extract_data(uploaded_file)
+            if st.session_state.df is None:
+                st.error("Formato de archivo no soportado o los datos no tienen el formato esperado.")
+                st.stop()  # Detiene la ejecución si hay un error
+            else:
+                st.session_state.df_procesado = None  # Restablece los datos procesados ya que se cargó un nuevo archivo
+                st.success("Datos cargados correctamente.")
 
-                    df['Corregidos'] = df['Originales'].apply(lambda frase: corregir_frase(frase, comando_sensibilidad, modelo_seleccionado))
-                    df = preparar_datos_para_analisis(df)
-                    st.session_state['df_procesado'] = df      
+    # Comprueba si los datos están listos para ser procesados
+    if st.session_state.df is not None:
+        st.header("Corrección y Preprocesamiento de Datos")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.session_state.sensibilidad = st.slider("Sensibilidad de la corrección:", 0, 10, st.session_state.sensibilidad, 1)
+        
+        with col2:
+            if st.button("Corregir y Preprocesar Datos"):
+                # Prepara el comando de sensibilidad para la corrección basado en la selección del usuario
+                comando_sensibilidad = sensibilidad_a_comando(st.session_state.sensibilidad)
+                
+                # Aplica la corrección y preprocesamiento sólo una vez, no cada vez que se regresa a la página
+                if 'df_procesado' not in st.session_state or st.session_state.reprocess_data:
+                    st.session_state.df['Corregidos'] = st.session_state.df['Originales'].apply(lambda frase: corregir_frase(frase, comando_sensibilidad, modelo_seleccionado))
+                    
+                    st.session_state.df_procesado = preparar_datos_para_analisis(st.session_state.df)
+                    print(st.session_state.df_procesado)  # Debug line to print the DataFrame
+
+                    st.session_state.reprocess_data = False
                     st.success("Textos corregidos y preprocesados con éxito.")
-               
-            st.header("Visualización de Datos")
-            # Slider para seleccionar cuántas filas mostrar
-            num_rows = len(df)
+
+        st.header("Visualización de Datos")
+        # Asumiendo que la columna 'Procesados' se añade en 'preparar_datos_para_analisis'
+        if st.session_state.df_procesado is not None and 'Procesados' in st.session_state.df_procesado.columns:
+            num_rows = len(st.session_state.df_procesado)
             slider_val = st.slider("Selecciona cuántas filas mostrar:", 1, max(10, num_rows), min(10, num_rows))
             
-            # Muestra las frases originales y corregidas
-            df_mostrar = st.session_state.get('df_procesado', df)
-            if "Procesados" in df_mostrar.columns:
-                st.write(df_mostrar[['Originales', 'Corregidos', "Procesados"]].head(slider_val))
-                st.subheader("Análisis de los cambios")
-                st.markdown("- La Distancia de Levenshtein es como contar cuántos errores de tipeo necesitarías corregir para hacer que un texto se convierta en el otro; menor número, más parecidos son. [Más información](https://en.wikipedia.org/wiki/Levenshtein_distance)")
-                st.markdown("- La Distancia de Jaccard es como mirar dos listas de palabras y calcular qué porcentaje comparten; un porcentaje más alto significa que los textos tienen más palabras en común. [Más información](https://en.wikipedia.org/wiki/Jaccard_index)")
-                st.markdown("- La Similitud del Coseno con TF-IDF evalúa qué tan parecidos son dos textos en cuanto a sus temas principales, no solo por las palabras exactas que usan. Un valor cercano a 1 indica que los textos tratan sobre temas muy similares, mientras que un valor cercano a 0 sugiere que hablan de temas distintos. [Más información sobre Similitud del Coseno](https://en.wikipedia.org/wiki/Cosine_similarity) y [TF-IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf)")
-                st.write(distancias_palabras(df_mostrar))
-            else:
-                st.write(df_mostrar[['Originales', 'Corregidos']].head(slider_val))
-            
+            # Muestra las frases originales, corregidas y procesadas
+            st.write(st.session_state.df_procesado[['Originales', 'Corregidos', "Procesados"]].head(slider_val))
+            show_analysis(st.session_state.df_procesado.head(slider_val))
         else:
-            st.error("Error al cargar los datos. Asegúrate de que el formato del archivo es correcto.")
+            st.error("Por favor, carga un archivo y realiza la corrección y el preprocesamiento.")
 
 # Función para la página de análisis
 def analysis_page():
