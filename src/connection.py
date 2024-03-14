@@ -1,3 +1,5 @@
+# src/connection.py
+
 import openai
 import matplotlib.pyplot as plt
 import pandas as pd

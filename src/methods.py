@@ -6,6 +6,8 @@ import unicodedata
 import re
 import spacy
 import Levenshtein as lev
+import streamlit as st
+import numpy as np
 
 # from itertools import chain
 from typing import List
@@ -72,13 +74,13 @@ def corregir_frase(frase: str, comando_sensibilidad: str, modelo_seleccionado) -
     respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt)
     return respuesta_corregida
 
-# def corregir_frases(frases: List[str], sensibilidad: int) -> List[str]:
-#     """Aplica corrección a cada frase en la lista basado en la sensibilidad."""
-#     # Convertimos el nivel de sensibilidad a un comando entendible para el modelo
-#     comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
+def corregir_frases(frases: List[str], sensibilidad: int) -> List[str]:
+    """Aplica corrección a cada frase en la lista basado en la sensibilidad."""
+    # Convertimos el nivel de sensibilidad a un comando entendible para el modelo
+    comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
     
-#     # Asegúrate de pasar el comando de sensibilidad a la función corregir_frase
-#     return [corregir_frase(frase, comando_sensibilidad) for frase in frases]
+    # Asegúrate de pasar el comando de sensibilidad a la función corregir_frase
+    return [corregir_frase(frase, comando_sensibilidad) for frase in frases]
 
 
 # N-gramas ------------------------------------------------------------
@@ -153,3 +155,55 @@ def similitud_coseno_tfidf(str1, str2):
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform([str1, str2])
     return cosine_similarity(tfidf_matrix)[0, 1]
+
+def distancias_palabras(df):
+    resultados = []
+    
+    # Calcula distancia de Levenshtein
+    levenshtein_o_c = np.mean([distancia_levenshtein(o, c) for o, c in zip(df['Originales'], df['Corregidos'])])
+    levenshtein_c_p = np.mean([distancia_levenshtein(c, p) for c, p in zip(df['Corregidos'], df['Procesados'])])
+    levenshtein_o_p = np.mean([distancia_levenshtein(o, p) for o, p in zip(df['Originales'], df['Procesados'])])  # Nueva línea
+    
+    # Calcula distancia de Jaccard
+    jaccard_o_c = np.mean([distancia_jaccard(o, c) for o, c in zip(df['Originales'], df['Corregidos'])])
+    jaccard_c_p = np.mean([distancia_jaccard(c, p) for c, p in zip(df['Corregidos'], df['Procesados'])])
+    jaccard_o_p = np.mean([distancia_jaccard(o, p) for o, p in zip(df['Originales'], df['Procesados'])])  
+    # Prepara TF-IDF + Similitud del coseno
+    cosine_o_c = np.mean([similitud_coseno_tfidf(o, c) for o, c in zip(df['Originales'], df['Corregidos'])])
+    cosine_c_p = np.mean([similitud_coseno_tfidf(c, p) for c, p in zip(df['Corregidos'], df['Procesados'])])
+    cosine_o_p = np.mean([similitud_coseno_tfidf(o, p) for o, p in zip(df['Originales'], df['Procesados'])])  
+    
+    resultados.append({
+        "Método": "Levenshtein", 
+        "Originales a Corregidos": levenshtein_o_c, 
+        "Corregidos a Procesados": levenshtein_c_p,
+        "Originales a Procesados": levenshtein_o_p  
+    })
+    resultados.append({
+        "Método": "Jaccard", 
+        "Originales a Corregidos": jaccard_o_c, 
+        "Corregidos a Procesados": jaccard_c_p,
+        "Originales a Procesados": jaccard_o_p  
+    })
+    resultados.append({
+        "Método": "TF-IDF + Cosine", 
+        "Originales a Corregidos": cosine_o_c, 
+        "Corregidos a Procesados": cosine_c_p,
+        "Originales a Procesados": cosine_o_p 
+    })
+    
+    return pd.DataFrame(resultados)
+
+def show_analysis(df):
+    """
+    Muestra el análisis de los cambios en las frases originales, corregidas y procesadas.
+    
+    Parámetros:
+    - df (DataFrame): DataFrame con las columnas 'Originales', 'Corregidos', 'Procesados'.
+    """
+    st.subheader("Análisis de los cambios")
+    st.markdown("- La Distancia de Levenshtein es como contar cuántos errores de tipeo necesitarías corregir para hacer que un texto se convierta en el otro; menor número, más parecidos son. [Más información](https://en.wikipedia.org/wiki/Levenshtein_distance)")
+    st.markdown("- La Distancia de Jaccard es como mirar dos listas de palabras y calcular qué porcentaje comparten; un porcentaje más alto significa que los textos tienen más palabras en común. [Más información](https://en.wikipedia.org/wiki/Jaccard_index)")
+    st.markdown("- La Similitud del Coseno con TF-IDF evalúa qué tan parecidos son dos textos en cuanto a sus temas principales, no solo por las palabras exactas que usan. Un valor cercano a 1 indica que los textos tratan sobre temas muy similares, mientras que un valor cercano a 0 sugiere que hablan de temas distintos. [Más información sobre Similitud del Coseno](https://en.wikipedia.org/wiki/Cosine_similarity) y [TF-IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf)")
+    st.write(distancias_palabras(df))
+    
