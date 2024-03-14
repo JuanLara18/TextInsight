@@ -133,7 +133,7 @@ def generar_temas(texto: str, n_temas: int, modelo: str) -> pd.DataFrame:
 
 # Sentimientos ---------------------------------------------------------
 
-def sentimientos(frases_procesadas):
+def sentimientos(frases_procesadas, modelo_seleccionado):
     """Aplica análisis de sentimientos a cada frase en la lista utilizando el modelo de OpenAI."""
     # Mapeo de respuestas del modelo a valores numéricos
     sentimiento_a_numero = {

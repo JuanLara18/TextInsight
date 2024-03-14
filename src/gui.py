@@ -128,10 +128,10 @@ def analysis_page():
                 st.dataframe(df_ngramas)
 
         # Crea un expander para el análisis de sentimientos
-        with st.beta_expander("Análisis de Sentimientos"):
+        with st.expander("Análisis de Sentimientos"):
             if st.button("Generar Análisis de Sentimientos"):
                 # Aplicar análisis de sentimientos a las frases procesadas
-                resultados_sentimientos = sentimientos(df['Procesados'].tolist())
+                resultados_sentimientos = sentimientos(df['Procesados'].tolist(), modelo_seleccionado)
                 
                 # Crear un DataFrame con las frases originales y los resultados del análisis de sentimientos
                 df_sentimientos = pd.DataFrame({
