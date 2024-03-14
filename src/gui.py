@@ -4,7 +4,7 @@ import pandas as pd
 import networkx as nx
 
 from .controllers import load_and_extract_data, preparar_datos_para_analisis
-from .methods import calculate_top_n_grams, corregir_frase, generate_wordcloud, ngramas_a_dataframe, generar_temas, generar_grafo, ngramas_a_grafo, preprocesar_texto, sensibilidad_a_comando, sentimientos, show_analysis
+from .methods import calculate_top_n_grams, corregir_frase, generate_wordcloud, ngramas_a_dataframe, generar_temas, ngramas_a_grafo, preprocesar_texto, sensibilidad_a_comando, sentimientos, show_analysis
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
 
 modelo_seleccionado = "gpt-3.5-turbo"
