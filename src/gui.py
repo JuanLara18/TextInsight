@@ -26,7 +26,7 @@ def welcome_page():
     st.title("Bienvenido a TextInsight")
     # Lista de modelos disponibles para seleccionar
     st.write("Text Insight es una herramienta de análisis de texto impulsada por modelos de Lenguaje de Aprendizaje Profundo (LLM) de Inteligencia Artificial, diseñada para descifrar, interpretar y revelar patrones ocultos y tendencias significativas en datos textuales complejos.")
-    modelos_disponibles = ["gpt-3.5-turbo", "gpt-4", "davinci"]
+    modelos_disponibles = ["gpt-4-32k", "gpt-4", "gpt-3.5-turbo", "davinci"]
     # Desplegable para seleccionar el modelo
     modelo_seleccionado = st.selectbox("Selecciona el modelo de inteligencia artificial a utilizar:", modelos_disponibles)
     
