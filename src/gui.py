@@ -1,5 +1,6 @@
 # src/gui.py
 import streamlit as st
+import pandas as pd
 from .controllers import load_and_extract_data, preparar_datos_para_analisis
 from .methods import calculate_top_n_grams, corregir_frase, generate_wordcloud, ngramas_a_dataframe, generar_temas, generar_grafo, preprocesar_texto, sensibilidad_a_comando, sentimientos, show_analysis
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
@@ -26,7 +27,7 @@ def welcome_page():
     st.title("Bienvenido a TextInsight")
     # Lista de modelos disponibles para seleccionar
     st.write("Text Insight es una herramienta de análisis de texto impulsada por modelos de Lenguaje de Aprendizaje Profundo (LLM) de Inteligencia Artificial, diseñada para descifrar, interpretar y revelar patrones ocultos y tendencias significativas en datos textuales complejos.")
-    modelos_disponibles = ["gpt-4-32k", "gpt-4", "gpt-3.5-turbo", "davinci"]
+    modelos_disponibles = ["gpt-4", "gpt-3.5-turbo", "davinci", "gpt-4-32k"]
     # Desplegable para seleccionar el modelo
     modelo_seleccionado = st.selectbox("Selecciona el modelo de inteligencia artificial a utilizar:", modelos_disponibles)
     
@@ -109,18 +110,15 @@ def analysis_page():
     if st.session_state.corregidos_df is not None and 'Procesados' in st.session_state.corregidos_df.columns:
         df = st.session_state.corregidos_df
 
-        # Columnas para la nube de palabras y análisis de n-gramas
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.header("Nube de Palabras")
+        # Crea un expander para la nube de palabras
+        with st.expander("Nube de Palabras"):
             if st.button("Generar Nube de Palabras"):
                 texto_procesado_para_nube = ' '.join(df['Procesados'].tolist())
                 fig = generate_wordcloud([texto_procesado_para_nube])
                 st.pyplot(fig)
 
-        with col2:
-            st.header("N-Gramas")
+        # Crea un expander para los n-gramas
+        with st.expander("N-Gramas"):
             n_value = st.number_input("Especifica el valor de n para los n-gramas", min_value=1, value=2, key='n_value_ngrams')
             top_n = st.slider("Selecciona cuántos n-gramas más comunes mostrar:", 1, 10, 5, key='top_n_ngrams')
             if st.button("Generar N-Gramas"):
@@ -129,34 +127,35 @@ def analysis_page():
                 df_ngramas = ngramas_a_dataframe(ngramas_resultado)
                 st.dataframe(df_ngramas)
 
-        # Columnas para sentimientos y generar grafo
-        col1, col2 = st.columns(2)
-
-        with col1:
-            # Segmento de Análisis de Sentimientos
-            st.header("Sentimientos")
+        # Crea un expander para el análisis de sentimientos
+        with st.beta_expander("Análisis de Sentimientos"):
             if st.button("Generar Análisis de Sentimientos"):
+                # Aplicar análisis de sentimientos a las frases procesadas
                 resultados_sentimientos = sentimientos(df['Procesados'].tolist())
-                st.write(resultados_sentimientos)  # Asume que 'sentimientos' devuelve algo que streamlit puede mostrar directamente
+                
+                # Crear un DataFrame con las frases originales y los resultados del análisis de sentimientos
+                df_sentimientos = pd.DataFrame({
+                    'Originales': df['Originales'],
+                    'Sentimiento': resultados_sentimientos,
+                })
+                
+                # Mostrar el DataFrame
+                st.dataframe(df_sentimientos)
 
-        with col2:
-            # Segmento para Generar Grafo
-            st.header("Grafo")
+        # Crea un expander para generar el grafo
+        with st.expander("Grafo"):
             if st.button("Generar Grafo"):
-                figura_grafo = generar_grafo(df['Procesados'].tolist())  # Asume que esta función devuelve una figura de grafo
+                figura_grafo = generar_grafo(df['Procesados'].tolist())
                 st.pyplot(figura_grafo)
-          
-        # Segmento para generar temas
-        st.header("Temas")
-        # Input para número de temas a generar
-        num_temas = st.number_input("Número de temas a generar:", min_value=1, value=5, step=1, key='num_temas')
-        if st.button("Generar Temas"):
-            todas_las_frases = " ".join(df['Corregidos'].tolist())
-            # Llamar a la función que interactúa con ChatGPT para generar temas
-            # Esta función debería retornar un nuevo DataFrame con las frases y sus temas asignados
-            df_temas = generar_temas(todas_las_frases, num_temas, modelo_seleccionado)
-            st.session_state['df_temas'] = df_temas  # Opcional: Guardar el nuevo DataFrame en el estado de la sesión
-            st.dataframe(df_temas)
+
+        # Crea un expander para generar temas
+        with st.expander("Temas"):
+            num_temas = st.number_input("Número de temas a generar:", min_value=1, value=5, step=1, key='num_temas')
+            if st.button("Generar Temas"):
+                todas_las_frases = " ".join(df['Corregidos'].tolist())
+                df_temas = generar_temas(todas_las_frases, num_temas, modelo_seleccionado)
+                st.session_state['df_temas'] = df_temas
+                st.dataframe(df_temas)
 
     else:
         st.write("Por favor, carga y procesa los datos en la pestaña 'Carga de Datos' antes de continuar con el análisis.")

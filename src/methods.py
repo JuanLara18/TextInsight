@@ -133,8 +133,29 @@ def generar_temas(texto: str, n_temas: int, modelo: str) -> pd.DataFrame:
 
 # Sentimientos ---------------------------------------------------------
 
-def sentimientos():
-    pass
+def sentimientos(frases_procesadas):
+    """Aplica análisis de sentimientos a cada frase en la lista utilizando el modelo de OpenAI."""
+    # Mapeo de respuestas del modelo a valores numéricos
+    sentimiento_a_numero = {
+        "Muy negativo": -1,
+        "Negativo": -0.5,
+        "Neutral": 0,
+        "Positivo": 0.5,
+        "Muy positivo": 1,
+    }
+    
+    # Lista para almacenar los resultados del análisis de sentimientos
+    resultados_sentimientos = []
+    
+    for frase in frases_procesadas:
+        # Generar respuesta del modelo
+        respuesta_modelo = generar_respuesta(modelo_seleccionado, f"¿Cuál es el sentimiento de la siguiente frase?: {frase}")
+        
+        # Convertir la respuesta del modelo a un número y añadirlo a la lista de resultados
+        sentimiento_numero = sentimiento_a_numero.get(respuesta_modelo, 0)  # Si la respuesta del modelo no está en el mapeo, asumir neutral (0)
+        resultados_sentimientos.append(sentimiento_numero)
+    
+    return resultados_sentimientos
 
 # Grafo ----------------------------------------------------------------
 
