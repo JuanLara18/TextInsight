@@ -8,6 +8,7 @@ import spacy
 import Levenshtein as lev
 import streamlit as st
 import numpy as np
+import networkx as nx
 
 # from itertools import chain
 from typing import List
@@ -159,8 +160,20 @@ def sentimientos(frases_procesadas, modelo_seleccionado):
 
 # Grafo ----------------------------------------------------------------
 
-def generar_grafo():
-    pass
+def ngramas_a_grafo(frases_procesadas, n):
+    """Genera un grafo a partir de los n-gramas de las frases procesadas."""
+    # Calcula los n-gramas
+    ngramas_resultado = calculate_top_n_grams(frases_procesadas, n)
+    
+    # Crea un grafo vacío
+    G = nx.Graph()
+    
+    # Añade los n-gramas al grafo
+    for ngrama, frecuencia in ngramas_resultado:
+        # Añade los nodos y las aristas con la frecuencia como peso
+        G.add_edge(*ngrama, weight=frecuencia)
+    
+    return G
 
 # Distancias -----------------------------------------------------------
 

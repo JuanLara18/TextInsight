@@ -1,8 +1,10 @@
 # src/gui.py
 import streamlit as st
 import pandas as pd
+import networkx as nx
+
 from .controllers import load_and_extract_data, preparar_datos_para_analisis
-from .methods import calculate_top_n_grams, corregir_frase, generate_wordcloud, ngramas_a_dataframe, generar_temas, generar_grafo, preprocesar_texto, sensibilidad_a_comando, sentimientos, show_analysis
+from .methods import calculate_top_n_grams, corregir_frase, generate_wordcloud, ngramas_a_dataframe, generar_temas, generar_grafo, ngramas_a_grafo, preprocesar_texto, sensibilidad_a_comando, sentimientos, show_analysis
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
 
 modelo_seleccionado = "gpt-3.5-turbo"
@@ -144,9 +146,14 @@ def analysis_page():
 
         # Crea un expander para generar el grafo
         with st.expander("Grafo"):
+            n_value = st.number_input("Número de palabras a relacionar en el grafo", min_value=2, value=2, key='n_value_graph')
             if st.button("Generar Grafo"):
-                figura_grafo = generar_grafo(df['Procesados'].tolist())
-                st.pyplot(figura_grafo)
+                # Genera el grafo
+                G = ngramas_a_grafo(df['Procesados'].tolist(), n_value)
+                
+                # Dibuja el grafo
+                nx.draw(G, with_labels=True)
+                st.pyplot()
 
         # Crea un expander para generar temas
         with st.expander("Temas"):
