@@ -20,6 +20,20 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 from src.connection import generar_respuesta 
 
+comandos = {
+        0: "No realizar ninguna corrección.",
+        1: "Corregir solo errores ortográficos muy obvios.",
+        2: "Corregir errores ortográficos obvios.",
+        3: "Corregir errores ortográficos y algunos errores gramaticales simples.",
+        4: "Realizar correcciones ortográficas y gramaticales básicas.",
+        5: "Corregir ortografía, gramática y puntuación.",
+        6: "Corregir ortografía, gramática, puntuación y algunos errores de estilo.",
+        7: "Realizar una corrección completa de ortografía, gramática, puntuación y estilo.",
+        8: "Además de corregir todo lo anterior, sugerir mejoras en la claridad.",
+        9: "Corregir y sugerir mejoras en claridad y estilo para hacer el texto más atractivo.",
+        10: "Realizar una corrección exhaustiva, incluyendo ortografía, gramática, estilo, claridad, y sugerir mejoras para optimizar la expresión del texto al máximo."
+    }
+
 # Inicialización de spaCy para el procesamiento de texto en español
 nlp = spacy.load('es_core_news_sm')
 
@@ -53,20 +67,10 @@ def remove_punctuation(words: List[str]) -> List[str]:
 
 def sensibilidad_a_comando(sensibilidad: int) -> str:
     """Convierte el nivel de sensibilidad en un comando específico para el modelo."""
-    comandos = {
-        0: "No realizar ninguna corrección.",
-        1: "Corregir solo errores ortográficos muy obvios.",
-        2: "Corregir errores ortográficos obvios.",
-        3: "Corregir errores ortográficos y algunos errores gramaticales simples.",
-        4: "Realizar correcciones ortográficas y gramaticales básicas.",
-        5: "Corregir ortografía, gramática y puntuación.",
-        6: "Corregir ortografía, gramática, puntuación y algunos errores de estilo.",
-        7: "Realizar una corrección completa de ortografía, gramática, puntuación y estilo.",
-        8: "Además de corregir todo lo anterior, sugerir mejoras en la claridad.",
-        9: "Corregir y sugerir mejoras en claridad y estilo para hacer el texto más atractivo.",
-        10: "Realizar una corrección exhaustiva, incluyendo ortografía, gramática, estilo, claridad, y sugerir mejoras para optimizar la expresión del texto al máximo."
-    }
     return comandos.get(sensibilidad, "Realizar una corrección moderada.")
+
+def obtener_descripcion_sensibilidad(n):
+    return comandos[n]
 
 def corregir_frase(frase: str, comando_sensibilidad: str, modelo_seleccionado) -> str:
     """Función que corrige individualmente cada frase."""
@@ -82,6 +86,29 @@ def corregir_frases(frases: List[str], sensibilidad: int) -> List[str]:
     
     # Asegúrate de pasar el comando de sensibilidad a la función corregir_frase
     return [corregir_frase(frase, comando_sensibilidad) for frase in frases]
+
+def corregir_frases_por_lote(frases: List[str], sensibilidad: int, tamaño_lote=5, modelo_seleccionado="gpt-3.5-turbo") -> List[str]:
+    """Aplica la corrección a cada frase en la lista en lotes."""
+    # Convertimos el nivel de sensibilidad a un comando entendible para el modelo
+    comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
+    
+    # Crea una lista para almacenar las frases corregidas
+    frases_corregidas = []
+    
+    # Divide las frases en lotes
+    for i in range(0, len(frases), tamaño_lote):
+        lote = frases[i:i+tamaño_lote]
+        
+        # Crea un prompt de lote con todas las frases en el lote
+        lote_prompt = ' '.join([f"{comando_sensibilidad} Corrige la siguiente frase: {frase}" for frase in lote])
+        
+        # Obtiene la respuesta del modelo para el lote
+        respuesta_lote = generar_respuesta(modelo_seleccionado, lote_prompt)
+        
+        # Divide la respuesta del lote en frases individuales y las añade a la lista de frases corregidas
+        frases_corregidas.extend(respuesta_lote.split('\n'))
+    
+    return frases_corregidas
 
 
 # N-gramas ------------------------------------------------------------
