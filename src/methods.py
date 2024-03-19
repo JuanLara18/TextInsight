@@ -10,7 +10,6 @@ import streamlit as st
 import numpy as np
 import networkx as nx
 
-# from itertools import chain
 from typing import List
 from nltk.util import ngrams
 from collections import Counter
@@ -36,6 +35,10 @@ comandos = {
 
 # Inicialización de spaCy para el procesamiento de texto en español
 nlp = spacy.load('es_core_news_sm')
+
+###################################################################
+####################### Taller de datos ###########################
+###################################################################
 
 # Preprocesamiento ---------------------------------------------------
 
@@ -73,9 +76,11 @@ def obtener_descripcion_sensibilidad(n):
     return comandos[n]
 
 def corregir_frase(frase: str, comando_sensibilidad: str, modelo_seleccionado) -> str:
-    """Función que corrige individualmente cada frase."""
-    prompt = f"{comando_sensibilidad} Corrige la siguiente frase: {frase}"
-    # Aquí, reemplaza 'modelo_seleccionado' con el identificador de tu modelo actual
+    """
+    Función que corrige individualmente cada frase.
+    """
+    # Añadido: Especificar claramente en el prompt que no se desea agregar nada adicional.
+    prompt = f"{comando_sensibilidad} Por favor, corrige la siguiente frase sin agregar comillas, paréntesis, signos de puntuación o cualquier otro texto que no sea una corrección directa: {frase}"
     respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt)
     return respuesta_corregida
 
@@ -86,6 +91,47 @@ def corregir_frases(frases: List[str], sensibilidad: int) -> List[str]:
     
     # Asegúrate de pasar el comando de sensibilidad a la función corregir_frase
     return [corregir_frase(frase, comando_sensibilidad) for frase in frases]
+
+def es_correccion_valida(original: str, corregido: str) -> bool:
+    """
+    Verifica si la corrección es válida, es decir, si no agrega elementos
+    innecesarios como comillas o narrativa y solo aplica correcciones ortográficas.
+    """
+    # Normalizar ambos strings removiendo espacios extra y convirtiendo a minúsculas para una comparación base.
+    original_norm = re.sub(r'\s+', ' ', original).strip().lower()
+    corregido_norm = re.sub(r'\s+', ' ', corregido).strip().lower()
+
+    # Verificar que no se agreguen comillas o narrativa en la corrección.
+    if '"""' in corregido_norm or 'corrige la siguiente frase' in corregido_norm:
+        return False
+
+    # Permitir cambios en la puntuación al final de la frase
+    if original_norm.rstrip('.').rstrip('?').rstrip('!') != corregido_norm.rstrip('.').rstrip('?').rstrip('!'):
+        return False
+
+    # Permitir la capitalización de la primera letra
+    if original_norm[0].islower() and corregido_norm[0].isupper():
+        original_norm = original_norm[0].upper() + original_norm[1:]
+    
+    # Ahora, comprobar si, después de normalizar la capitalización, los textos son iguales.
+    if original_norm != corregido_norm:
+        return False
+
+    # Agrega más reglas según sea necesario
+
+    return True
+
+def corregir_y_validar_frase(frase: str, sensibilidad: int, modelo_seleccionado) -> str:
+    """
+    Corrige una frase y valida que la corrección no agregue elementos no deseados.
+    Si la corrección no es válida, devuelve la frase original.
+    """
+    comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
+    respuesta_corregida = corregir_frase(frase, comando_sensibilidad, modelo_seleccionado)
+    
+    # Solo devuelve la corrección si es válida, de lo contrario, devuelve la original
+    return respuesta_corregida if es_correccion_valida(frase, respuesta_corregida) else frase
+
 
 def corregir_frases_por_lote(frases: List[str], sensibilidad: int, tamaño_lote=5, modelo_seleccionado="gpt-3.5-turbo") -> List[str]:
     """Aplica la corrección a cada frase en la lista en lotes."""
@@ -110,6 +156,75 @@ def corregir_frases_por_lote(frases: List[str], sensibilidad: int, tamaño_lote=
     
     return frases_corregidas
 
+# Distancias -----------------------------------------------------------
+
+def distancia_levenshtein(str1, str2):
+    return lev.distance(str1, str2)
+
+def distancia_jaccard(str1, str2):
+    set1 = set(str1.split())
+    set2 = set(str2.split())
+    return 1 - len(set1.intersection(set2)) / len(set1.union(set2))
+
+def similitud_coseno_tfidf(str1, str2):
+    vectorizer = TfidfVectorizer()
+    tfidf_matrix = vectorizer.fit_transform([str1, str2])
+    return cosine_similarity(tfidf_matrix)[0, 1]
+
+def distancias_palabras(df):
+    resultados = []
+    
+    # Calcula distancia de Levenshtein
+    levenshtein_o_c = np.mean([distancia_levenshtein(o, c) for o, c in zip(df['Originales'], df['Corregidos'])])
+    levenshtein_c_p = np.mean([distancia_levenshtein(c, p) for c, p in zip(df['Corregidos'], df['Procesados'])])
+    levenshtein_o_p = np.mean([distancia_levenshtein(o, p) for o, p in zip(df['Originales'], df['Procesados'])])  # Nueva línea
+    
+    # Calcula distancia de Jaccard
+    jaccard_o_c = np.mean([distancia_jaccard(o, c) for o, c in zip(df['Originales'], df['Corregidos'])])
+    jaccard_c_p = np.mean([distancia_jaccard(c, p) for c, p in zip(df['Corregidos'], df['Procesados'])])
+    jaccard_o_p = np.mean([distancia_jaccard(o, p) for o, p in zip(df['Originales'], df['Procesados'])])  
+    # Prepara TF-IDF + Similitud del coseno
+    cosine_o_c = np.mean([similitud_coseno_tfidf(o, c) for o, c in zip(df['Originales'], df['Corregidos'])])
+    cosine_c_p = np.mean([similitud_coseno_tfidf(c, p) for c, p in zip(df['Corregidos'], df['Procesados'])])
+    cosine_o_p = np.mean([similitud_coseno_tfidf(o, p) for o, p in zip(df['Originales'], df['Procesados'])])  
+    
+    resultados.append({
+        "Método": "Levenshtein", 
+        "Originales a Corregidos": levenshtein_o_c, 
+        "Corregidos a Procesados": levenshtein_c_p,
+        "Originales a Procesados": levenshtein_o_p  
+    })
+    resultados.append({
+        "Método": "Jaccard", 
+        "Originales a Corregidos": jaccard_o_c, 
+        "Corregidos a Procesados": jaccard_c_p,
+        "Originales a Procesados": jaccard_o_p  
+    })
+    resultados.append({
+        "Método": "TF-IDF + Cosine", 
+        "Originales a Corregidos": cosine_o_c, 
+        "Corregidos a Procesados": cosine_c_p,
+        "Originales a Procesados": cosine_o_p 
+    })
+    
+    return pd.DataFrame(resultados)
+
+def show_analysis(df):
+    """
+    Muestra el análisis de los cambios en las frases originales, corregidas y procesadas.
+    
+    Parámetros:
+    - df (DataFrame): DataFrame con las columnas 'Originales', 'Corregidos', 'Procesados'.
+    """
+    st.subheader("Análisis de los cambios")
+    st.markdown("- La Distancia de Levenshtein es como contar cuántos errores de tipeo necesitarías corregir para hacer que un texto se convierta en el otro; menor número, más parecidos son. [Más información](https://en.wikipedia.org/wiki/Levenshtein_distance)")
+    st.markdown("- La Distancia de Jaccard es como mirar dos listas de palabras y calcular qué porcentaje comparten; un porcentaje más alto significa que los textos tienen más palabras en común. [Más información](https://en.wikipedia.org/wiki/Jaccard_index)")
+    st.markdown("- La Similitud del Coseno con TF-IDF evalúa qué tan parecidos son dos textos en cuanto a sus temas principales, no solo por las palabras exactas que usan. Un valor cercano a 1 indica que los textos tratan sobre temas muy similares, mientras que un valor cercano a 0 sugiere que hablan de temas distintos. [Más información sobre Similitud del Coseno](https://en.wikipedia.org/wiki/Cosine_similarity) y [TF-IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf)")
+    st.write(distancias_palabras(df))
+    
+###################################################################
+###################### Análisis de datos ##########################
+###################################################################
 
 # N-gramas ------------------------------------------------------------
 
@@ -202,69 +317,7 @@ def ngramas_a_grafo(frases_procesadas, n):
     
     return G
 
-# Distancias -----------------------------------------------------------
 
-def distancia_levenshtein(str1, str2):
-    return lev.distance(str1, str2)
-
-def distancia_jaccard(str1, str2):
-    set1 = set(str1.split())
-    set2 = set(str2.split())
-    return 1 - len(set1.intersection(set2)) / len(set1.union(set2))
-
-def similitud_coseno_tfidf(str1, str2):
-    vectorizer = TfidfVectorizer()
-    tfidf_matrix = vectorizer.fit_transform([str1, str2])
-    return cosine_similarity(tfidf_matrix)[0, 1]
-
-def distancias_palabras(df):
-    resultados = []
-    
-    # Calcula distancia de Levenshtein
-    levenshtein_o_c = np.mean([distancia_levenshtein(o, c) for o, c in zip(df['Originales'], df['Corregidos'])])
-    levenshtein_c_p = np.mean([distancia_levenshtein(c, p) for c, p in zip(df['Corregidos'], df['Procesados'])])
-    levenshtein_o_p = np.mean([distancia_levenshtein(o, p) for o, p in zip(df['Originales'], df['Procesados'])])  # Nueva línea
-    
-    # Calcula distancia de Jaccard
-    jaccard_o_c = np.mean([distancia_jaccard(o, c) for o, c in zip(df['Originales'], df['Corregidos'])])
-    jaccard_c_p = np.mean([distancia_jaccard(c, p) for c, p in zip(df['Corregidos'], df['Procesados'])])
-    jaccard_o_p = np.mean([distancia_jaccard(o, p) for o, p in zip(df['Originales'], df['Procesados'])])  
-    # Prepara TF-IDF + Similitud del coseno
-    cosine_o_c = np.mean([similitud_coseno_tfidf(o, c) for o, c in zip(df['Originales'], df['Corregidos'])])
-    cosine_c_p = np.mean([similitud_coseno_tfidf(c, p) for c, p in zip(df['Corregidos'], df['Procesados'])])
-    cosine_o_p = np.mean([similitud_coseno_tfidf(o, p) for o, p in zip(df['Originales'], df['Procesados'])])  
-    
-    resultados.append({
-        "Método": "Levenshtein", 
-        "Originales a Corregidos": levenshtein_o_c, 
-        "Corregidos a Procesados": levenshtein_c_p,
-        "Originales a Procesados": levenshtein_o_p  
-    })
-    resultados.append({
-        "Método": "Jaccard", 
-        "Originales a Corregidos": jaccard_o_c, 
-        "Corregidos a Procesados": jaccard_c_p,
-        "Originales a Procesados": jaccard_o_p  
-    })
-    resultados.append({
-        "Método": "TF-IDF + Cosine", 
-        "Originales a Corregidos": cosine_o_c, 
-        "Corregidos a Procesados": cosine_c_p,
-        "Originales a Procesados": cosine_o_p 
-    })
-    
-    return pd.DataFrame(resultados)
-
-def show_analysis(df):
-    """
-    Muestra el análisis de los cambios en las frases originales, corregidas y procesadas.
-    
-    Parámetros:
-    - df (DataFrame): DataFrame con las columnas 'Originales', 'Corregidos', 'Procesados'.
-    """
-    st.subheader("Análisis de los cambios")
-    st.markdown("- La Distancia de Levenshtein es como contar cuántos errores de tipeo necesitarías corregir para hacer que un texto se convierta en el otro; menor número, más parecidos son. [Más información](https://en.wikipedia.org/wiki/Levenshtein_distance)")
-    st.markdown("- La Distancia de Jaccard es como mirar dos listas de palabras y calcular qué porcentaje comparten; un porcentaje más alto significa que los textos tienen más palabras en común. [Más información](https://en.wikipedia.org/wiki/Jaccard_index)")
-    st.markdown("- La Similitud del Coseno con TF-IDF evalúa qué tan parecidos son dos textos en cuanto a sus temas principales, no solo por las palabras exactas que usan. Un valor cercano a 1 indica que los textos tratan sobre temas muy similares, mientras que un valor cercano a 0 sugiere que hablan de temas distintos. [Más información sobre Similitud del Coseno](https://en.wikipedia.org/wiki/Cosine_similarity) y [TF-IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf)")
-    st.write(distancias_palabras(df))
-    
+###################################################################
+####################### Exportar datos ############################
+###################################################################

@@ -1,7 +1,7 @@
 # src/controllers.py
+
 import pandas as pd
-import numpy as np
-from .methods import preprocesar_texto, distancia_levenshtein, distancia_jaccard, similitud_coseno_tfidf
+from .methods import preprocesar_texto
 
 # Carga y preparación de los datos ----------------------------
 
@@ -60,3 +60,4 @@ def preparar_datos_para_analisis(df):
         # Por ejemplo, aplicar a 'Originales' o manejar de otra manera.
         df['Procesados'] = df['Originales'].apply(preprocesar_texto)
     return df
+

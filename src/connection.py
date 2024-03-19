@@ -6,17 +6,16 @@ import pandas as pd
 import os
 from dotenv import load_dotenv
 
-# Carga las variables de entorno desde el archivo especificado.
+# Cargar variables de entorno desde el archivo 'src/openai_api.env' para mayor seguridad
 load_dotenv('src/openai_api.env')
+api_key = os.getenv('OPENAI_API_KEY')  # Obtener la clave API de las variables de entorno
 
-# Obtener la clave API de OpenAI de las variables de entorno.
-api_key = os.getenv('OPENAI_API_KEY')
-
+# Validar que la clave API está presente, si no, lanzar un error
 if not api_key:
     raise ValueError("No se encontró la clave API de OpenAI. "
                      "Por favor, verifica el archivo de configuración.")
 
-# Asigna la clave API a la configuración de OpenAI para su uso en todo el módulo.
+# Configurar la clave API de OpenAI para su uso en las solicitudes
 openai.api_key = api_key
 
 
@@ -33,6 +32,7 @@ def generar_respuesta(modelo_seleccionado, prompt, max_tokens=500):
         str: La respuesta generada por el modelo.
     """
     try:
+        # Realizar la petición a la API de OpenAI con los parámetros dados
         response = openai.ChatCompletion.create(
             model=modelo_seleccionado,
             messages=[
@@ -41,10 +41,11 @@ def generar_respuesta(modelo_seleccionado, prompt, max_tokens=500):
             ],
             max_tokens=max_tokens
         )
+        # Extraer y retornar el contenido de la respuesta generada
         return response['choices'][0]['message']['content'].strip()
     except openai.error.OpenAIError as e:
+        # Manejo de errores relacionados con la API de OpenAI
         raise openai.error.OpenAIError(f"Error al generar respuesta del modelo: {e}")
-
 
 def obtener_descripcion_modelo(modelo_seleccionado):
     """
@@ -56,12 +57,14 @@ def obtener_descripcion_modelo(modelo_seleccionado):
     Returns:
         str: Descripción textual del modelo.
     """
+    # Diccionario con descripciones de cada modelo para consulta rápida
     descripciones = {
         "gpt-3.5-turbo": "Ideal para respuestas rápidas y a bajo costo. Más económico pero menos detallado.",
         "gpt-4": "Máxima precisión y detalle en las respuestas. Ideal para complejidad pero con mayor costo.",
         "davinci": "Experto en comprender y generar texto complejo. Gran capacidad pero no el más rápido.",
         "gpt-4-32k": "Óptimo para trabajar con textos extensos. Maneja grandes volúmenes de datos, pero puede ser más lento."
     }
+    # Retornar la descripción basada en el modelo seleccionado o un mensaje por defecto si no se encuentra
     return descripciones.get(modelo_seleccionado, "Modelo no especificado")
 
 def generar_grafico_comparativo():

@@ -3,13 +3,11 @@ import streamlit as st
 import pandas as pd
 import networkx as nx
 
-from .controllers import load_and_extract_data, preparar_datos_para_analisis
-from .methods import calculate_top_n_grams, corregir_frase, generate_wordcloud, ngramas_a_dataframe, generar_temas, ngramas_a_grafo, obtener_descripcion_sensibilidad, preprocesar_texto, sensibilidad_a_comando, sentimientos, show_analysis
+from .controllers import load_and_extract_data
+from .methods import calculate_top_n_grams, corregir_frase, corregir_y_validar_frase, generate_wordcloud, ngramas_a_dataframe, generar_temas, ngramas_a_grafo, obtener_descripcion_sensibilidad, preprocesar_texto, sensibilidad_a_comando, sentimientos, show_analysis
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
 
 st.session_state.modelo_seleccionado = "gpt-3.5-turbo"
-# sensibilidad = 5
-# comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
 
 # Función para mostrar la página de bienvenida
 def welcome_page():
@@ -29,7 +27,7 @@ def welcome_page():
     st.title("Bienvenido a TextInsight")
     # Lista de modelos disponibles para seleccionar
     st.write("Text Insight es una herramienta de análisis de texto impulsada por modelos de Lenguaje de Aprendizaje Profundo (LLM) de Inteligencia Artificial, diseñada para descifrar, interpretar y revelar patrones ocultos y tendencias significativas en datos textuales complejos.")
-    modelos_disponibles = ["gpt-4", "gpt-3.5-turbo", "davinci", "gpt-4-32k"]
+    modelos_disponibles = ["gpt-3.5-turbo", "gpt-4", "davinci", "gpt-4-32k"]
     # Desplegable para seleccionar el modelo
     st.session_state.modelo_seleccionado = st.selectbox("Selecciona el modelo de inteligencia artificial a utilizar:", modelos_disponibles)
     
@@ -70,15 +68,16 @@ def data_loading_page():
                 st.success("Datos cargados correctamente.")
         
         # Convertir el DataFrame a HTML y aplicar estilos CSS para centrar
-        df_html = df.to_html(classes='table table-striped', index=False)
-        centered_df_html = f"""
-        <div style="display: flex; justify-content: center; align-items: center;">
-            {df_html}
-        </div>
-        """
+        # df_html = df.to_html(classes='table table-striped', index=False)
+        # centered_df_html = f"""
+        # <div style="display: flex; justify-content: center; align-items: center;">
+        #     {df_html}
+        # </div>
+        # """
         with st.expander("Ver datos cargados"):
-            # Mostrar el DataFrame centrado usando HTML
-            st.markdown(centered_df_html, unsafe_allow_html=True)
+        #  # Mostrar el DataFrame centrado usando HTML
+        #  st.markdown(centered_df_html, unsafe_allow_html=True)
+            st.write(df)
 
     if 'df' in st.session_state and st.session_state.df is not None:
         st.header("Corrección y Preprocesamiento de Datos")
@@ -93,7 +92,7 @@ def data_loading_page():
             if st.button("Corregir"):
                 with st.spinner("Corrigiendo datos:"):
                     comando_sensibilidad = sensibilidad_a_comando(st.session_state.sensibilidad)
-                    st.session_state.df['Corregidos'] = st.session_state.df['Originales'].apply(lambda frase: corregir_frase(frase, comando_sensibilidad, st.session_state.modelo_seleccionado))
+                    st.session_state.df['Corregidos'] = st.session_state.df['Originales'].apply(lambda frase: corregir_y_validar_frase(frase, st.session_state.sensibilidad, st.session_state.modelo_seleccionado))
                     st.session_state.corregidos_df = st.session_state.df  # Guarda el DataFrame corregido en un estado de sesión separado
                 st.success("Corrección finalizada")
                     
@@ -105,8 +104,6 @@ def data_loading_page():
                     else:
                         st.error("Por favor, primero presiona el botón 'Corregir'.")
                         
-            
-        
         st.header("Visualización de Datos")
         if st.session_state.corregidos_df is not None:
             num_rows = len(st.session_state.corregidos_df)
