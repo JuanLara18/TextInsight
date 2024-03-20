@@ -4,7 +4,7 @@ import pandas as pd
 import networkx as nx
 
 from .controllers import load_and_extract_data
-from .methods import calculate_top_n_grams, corregir_frase, corregir_y_validar_frase, generate_wordcloud, ngramas_a_dataframe, generar_temas, ngramas_a_grafo, obtener_descripcion_sensibilidad, preprocesar_texto, sensibilidad_a_comando, sentimientos, show_analysis
+from .methods import calculate_top_n_grams, corregir_frase, generate_wordcloud, ngramas_a_dataframe, generar_temas, ngramas_a_grafo, obtener_descripcion_sensibilidad, preprocesar_texto, sensibilidad_a_comando, sentimientos_textblob, show_analysis
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
 
 st.session_state.modelo_seleccionado = "gpt-3.5-turbo"
@@ -106,7 +106,7 @@ def data_loading_page():
                         st.success("Datos procesados")
                     else:
                         st.error("Por favor, primero presiona el botón 'Corregir'.")
-                        
+        
         st.header("Visualización de Datos")
         if st.session_state.corregidos_df is not None:
             num_rows = len(st.session_state.corregidos_df)
@@ -149,16 +149,11 @@ def analysis_page():
         # Crea un expander para el análisis de sentimientos
         with st.expander("Análisis de Sentimientos"):
             if st.button("Generar Análisis de Sentimientos"):
-                # Aplicar análisis de sentimientos a las frases procesadas
-                resultados_sentimientos = sentimientos(df['Procesados'].tolist(), st.session_state.modelo_seleccionado)
-                
-                # Crear un DataFrame con las frases originales y los resultados del análisis de sentimientos
+                resultados_sentimientos = sentimientos_textblob(df['Corregidos'].tolist())
                 df_sentimientos = pd.DataFrame({
-                    'Originales': df['Originales'],
+                    'Corregidos': df['Corregidos'],
                     'Sentimiento': resultados_sentimientos,
                 })
-                
-                # Mostrar el DataFrame
                 st.dataframe(df_sentimientos)
 
         # Crea un expander para generar el grafo

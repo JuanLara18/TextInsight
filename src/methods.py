@@ -9,6 +9,7 @@ import Levenshtein as lev
 import streamlit as st
 import numpy as np
 import networkx as nx
+import nltk
 
 from typing import List
 from nltk.util import ngrams
@@ -17,24 +18,26 @@ from wordcloud import WordCloud
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-from src.connection import generar_respuesta 
+from textblob import TextBlob
 
-comandos = {
-        0: "No realizar ninguna corrección.",
-        1: "Corregir solo errores ortográficos muy obvios.",
-        2: "Corregir errores ortográficos obvios.",
-        3: "Corregir errores ortográficos y algunos errores gramaticales simples.",
-        4: "Realizar correcciones ortográficas y gramaticales básicas.",
-        5: "Corregir ortografía, gramática y puntuación.",
-        6: "Corregir ortografía, gramática, puntuación y algunos errores de estilo.",
-        7: "Realizar una corrección completa de ortografía, gramática, puntuación y estilo.",
-        8: "Además de corregir todo lo anterior, sugerir mejoras en la claridad.",
-        9: "Corregir y sugerir mejoras en claridad y estilo para hacer el texto más atractivo.",
-        10: "Realizar una corrección exhaustiva, incluyendo ortografía, gramática, estilo, claridad, y sugerir mejoras para optimizar la expresión del texto al máximo."
-    }
+from src.connection import generar_respuesta 
 
 # Inicialización de spaCy para el procesamiento de texto en español
 nlp = spacy.load('es_core_news_sm')
+
+comandos = {
+    0: "No se requiere ninguna acción.",
+    1: "Corrige únicamente errores ortográficos evidentes, como errores tipográficos o palabras mal escritas que alteren significativamente la comprensión del texto.",
+    2: "Corrige errores ortográficos claros sin cambiar el estilo ni la estructura del texto.",
+    3: "Realiza correcciones de errores ortográficos y gramaticales simples que no requieran reestructuración del texto.",
+    4: "Corrige errores ortográficos y gramaticales básicos, manteniendo el significado original del texto.",
+    5: "Corrige ortografía, gramática y puntuación para que el texto esté correctamente estructurado según las reglas estándar del idioma.",
+    6: "Corrige la ortografía, la gramática, la puntuación y realiza ajustes menores de estilo para mejorar la legibilidad.",
+    7: "Realiza una corrección completa de ortografía, gramática, puntuación y estilo, sin cambiar el significado original ni añadir contenido nuevo.",
+    8: "Además de realizar todas las correcciones anteriores, sugiere mejoras para clarificar el texto donde sea ambiguo o confuso.",
+    9: "Corrige todo lo anterior y sugiere mejoras en la claridad y el estilo para hacer el texto más atractivo y cautivador.",
+    10: "Realiza una corrección exhaustiva incluyendo ortografía, gramática, estilo y claridad, y realiza mejoras sustanciales para optimizar la expresión y el impacto del texto."
+}
 
 ###################################################################
 ####################### Taller de datos ###########################
@@ -69,20 +72,7 @@ def remove_punctuation(words: List[str]) -> List[str]:
 # Corrección -----------------------------------------------------------
 
 def generar_prompt_correccion(frase: str, nivel_sensibilidad: int) -> str:
-    comandos = {
-        0: "No se requiere acción alguna.",
-        1: "Corrige únicamente errores ortográficos evidentes como errores tipográficos o palabras mal escritas que alteren significativamente la comprensión del texto.",
-        2: "Corrige errores ortográficos claros sin cambiar el estilo o la estructura del texto.",
-        3: "Realiza correcciones de errores ortográficos y errores gramaticales simples que no requieran reestructuración del texto.",
-        4: "Corrige errores ortográficos y gramaticales básicos, manteniendo el significado original del texto.",
-        5: "Corrige ortografía, gramática y puntuación para que el texto esté correctamente estructurado según las reglas estándar del idioma.",
-        6: "Corrige la ortografía, la gramática, la puntuación y realiza ajustes menores de estilo para mejorar la legibilidad.",
-        7: "Realiza una corrección completa de ortografía, gramática, puntuación y estilo, sin cambiar el significado original o añadir contenido nuevo.",
-        8: "Además de realizar todas las correcciones anteriores, sugiere mejoras para clarificar el texto donde sea ambiguo o confuso.",
-        9: "Corrige todo lo anterior y sugiere mejoras en la claridad y el estilo para hacer el texto más atractivo y cautivador.",
-        10: "Realiza una corrección exhaustiva incluyendo ortografía, gramática, estilo y claridad, y sugiere mejoras sustanciales para optimizar la expresión y el impacto del texto."
-    }
-    
+   
     comando = comandos.get(nivel_sensibilidad, "")
     prompt = f"Por favor, realiza una corrección de nivel {nivel_sensibilidad} siguiendo estas instrucciones: {comando} Corrige la frase: '{frase}'. Presenta SOLAMENTE el texto corregido, no añadas respuesta, texto o símbolos a la respuesta."
     return prompt
@@ -303,29 +293,25 @@ def generar_temas(texto: str, n_temas: int, modelo: str) -> pd.DataFrame:
 
 # Sentimientos ---------------------------------------------------------
 
-def sentimientos(frases_procesadas, modelo_seleccionado):
-    """Aplica análisis de sentimientos a cada frase en la lista utilizando el modelo de OpenAI."""
-    # Mapeo de respuestas del modelo a valores numéricos
-    sentimiento_a_numero = {
-        "Muy negativo": -1,
-        "Negativo": -0.5,
-        "Neutral": 0,
-        "Positivo": 0.5,
-        "Muy positivo": 1,
-    }
-    
-    # Lista para almacenar los resultados del análisis de sentimientos
-    resultados_sentimientos = []
-    
-    for frase in frases_procesadas:
-        # Generar respuesta del modelo
-        respuesta_modelo = generar_respuesta(modelo_seleccionado, f"¿Cuál es el sentimiento de la siguiente frase?: {frase}")
-        
-        # Convertir la respuesta del modelo a un número y añadirlo a la lista de resultados
-        sentimiento_numero = sentimiento_a_numero.get(respuesta_modelo, 0)  # Si la respuesta del modelo no está en el mapeo, asumir neutral (0)
-        resultados_sentimientos.append(sentimiento_numero)
-    
-    return resultados_sentimientos
+def sentimientos_textblob(frases_corregidas):
+   """Aplica análisis de sentimientos utilizando TextBlob."""
+   # Crea un analizador de sentimientos de TextBlob
+   analizador = TextBlob(lang="es")
+
+   # Lista para almacenar los resultados del análisis de sentimientos
+   resultados_sentimientos = []
+
+   # Itera sobre las frases corregidas
+   for frase in frases_corregidas:
+       # Obtiene el sentimiento de la frase
+       sentimiento = analizador(frase).sentiment.polarity
+
+       # Añade el sentimiento a la lista de resultados
+       resultados_sentimientos.append(sentimiento)
+
+   # Devuelve la lista de resultados
+   return resultados_sentimientos
+
 
 # Grafo ----------------------------------------------------------------
 
