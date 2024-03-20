@@ -4,7 +4,7 @@ import pandas as pd
 import networkx as nx
 
 from .controllers import load_and_extract_data
-from .methods import calculate_top_n_grams, corregir_frase, generate_wordcloud, ngramas_a_dataframe, generar_temas, ngramas_a_grafo, obtener_descripcion_sensibilidad, preprocesar_texto, sensibilidad_a_comando, sentimientos_textblob, show_analysis
+from .methods import analisis_sentimientos_transformers, calculate_top_n_grams, corregir_frase, generate_wordcloud, ngramas_a_dataframe, generar_temas, ngramas_a_grafo, obtener_descripcion_sensibilidad, preprocesar_texto, sensibilidad_a_comando, sentimientos_textblob, show_analysis
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
 
 st.session_state.modelo_seleccionado = "gpt-3.5-turbo"
@@ -149,7 +149,7 @@ def analysis_page():
         # Crea un expander para el análisis de sentimientos
         with st.expander("Análisis de Sentimientos"):
             if st.button("Generar Análisis de Sentimientos"):
-                resultados_sentimientos = sentimientos_textblob(df['Corregidos'].tolist())
+                resultados_sentimientos = analisis_sentimientos_transformers(df['Corregidos'].tolist())
                 df_sentimientos = pd.DataFrame({
                     'Corregidos': df['Corregidos'],
                     'Sentimiento': resultados_sentimientos,

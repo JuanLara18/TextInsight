@@ -9,7 +9,6 @@ import Levenshtein as lev
 import streamlit as st
 import numpy as np
 import networkx as nx
-import nltk
 
 from typing import List
 from nltk.util import ngrams
@@ -17,13 +16,13 @@ from collections import Counter
 from wordcloud import WordCloud
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
-
-from textblob import TextBlob
+from transformers import pipeline
 
 from src.connection import generar_respuesta 
 
 # Inicialización de spaCy para el procesamiento de texto en español
 nlp = spacy.load('es_core_news_sm')
+nlp_sentimientos = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
 
 comandos = {
     0: "No se requiere ninguna acción.",
@@ -293,25 +292,16 @@ def generar_temas(texto: str, n_temas: int, modelo: str) -> pd.DataFrame:
 
 # Sentimientos ---------------------------------------------------------
 
-def sentimientos_textblob(frases_corregidas):
-   """Aplica análisis de sentimientos utilizando TextBlob."""
-   # Crea un analizador de sentimientos de TextBlob
-   analizador = TextBlob(lang="es")
-
-   # Lista para almacenar los resultados del análisis de sentimientos
-   resultados_sentimientos = []
-
-   # Itera sobre las frases corregidas
-   for frase in frases_corregidas:
-       # Obtiene el sentimiento de la frase
-       sentimiento = analizador(frase).sentiment.polarity
-
-       # Añade el sentimiento a la lista de resultados
-       resultados_sentimientos.append(sentimiento)
-
-   # Devuelve la lista de resultados
-   return resultados_sentimientos
-
+def analisis_sentimientos_transformers(frases):
+    """Aplica análisis de sentimientos utilizando la biblioteca transformers."""
+    resultados_sentimientos = []
+    for frase in frases:
+        resultado = nlp_sentimientos(frase)[0]
+        resultados_sentimientos.append({
+            'label': resultado['label'],
+            'score': resultado['score']
+        })
+    return resultados_sentimientos
 
 # Grafo ----------------------------------------------------------------
 
