@@ -92,7 +92,10 @@ def data_loading_page():
             if st.button("Corregir"):
                 with st.spinner("Corrigiendo datos:"):
                     comando_sensibilidad = sensibilidad_a_comando(st.session_state.sensibilidad)
-                    st.session_state.df['Corregidos'] = st.session_state.df['Originales'].apply(lambda frase: corregir_y_validar_frase(frase, st.session_state.sensibilidad, st.session_state.modelo_seleccionado))
+                    st.session_state.df['Corregidos'] = st.session_state.df['Originales'].apply(
+                        lambda frase: corregir_frase(frase, st.session_state.sensibilidad, st.session_state.modelo_seleccionado)
+                    )
+
                     st.session_state.corregidos_df = st.session_state.df  # Guarda el DataFrame corregido en un estado de sesión separado
                 st.success("Corrección finalizada")
                     

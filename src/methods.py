@@ -68,6 +68,25 @@ def remove_punctuation(words: List[str]) -> List[str]:
 
 # Corrección -----------------------------------------------------------
 
+def generar_prompt_correccion(frase: str, nivel_sensibilidad: int) -> str:
+    comandos = {
+        0: "No se requiere acción alguna.",
+        1: "Corrige únicamente errores ortográficos evidentes como errores tipográficos o palabras mal escritas que alteren significativamente la comprensión del texto.",
+        2: "Corrige errores ortográficos claros sin cambiar el estilo o la estructura del texto.",
+        3: "Realiza correcciones de errores ortográficos y errores gramaticales simples que no requieran reestructuración del texto.",
+        4: "Corrige errores ortográficos y gramaticales básicos, manteniendo el significado original del texto.",
+        5: "Corrige ortografía, gramática y puntuación para que el texto esté correctamente estructurado según las reglas estándar del idioma.",
+        6: "Corrige la ortografía, la gramática, la puntuación y realiza ajustes menores de estilo para mejorar la legibilidad.",
+        7: "Realiza una corrección completa de ortografía, gramática, puntuación y estilo, sin cambiar el significado original o añadir contenido nuevo.",
+        8: "Además de realizar todas las correcciones anteriores, sugiere mejoras para clarificar el texto donde sea ambiguo o confuso.",
+        9: "Corrige todo lo anterior y sugiere mejoras en la claridad y el estilo para hacer el texto más atractivo y cautivador.",
+        10: "Realiza una corrección exhaustiva incluyendo ortografía, gramática, estilo y claridad, y sugiere mejoras sustanciales para optimizar la expresión y el impacto del texto."
+    }
+    
+    comando = comandos.get(nivel_sensibilidad, "")
+    prompt = f"Por favor, realiza una corrección de nivel {nivel_sensibilidad} siguiendo estas instrucciones: {comando} Corrige la frase: '{frase}'. Presenta SOLAMENTE el texto corregido, no añadas respuesta, texto o símbolos a la respuesta."
+    return prompt
+
 def sensibilidad_a_comando(sensibilidad: int) -> str:
     """Convierte el nivel de sensibilidad en un comando específico para el modelo."""
     return comandos.get(sensibilidad, "Realizar una corrección moderada.")
@@ -75,14 +94,62 @@ def sensibilidad_a_comando(sensibilidad: int) -> str:
 def obtener_descripcion_sensibilidad(n):
     return comandos[n]
 
-def corregir_frase(frase: str, comando_sensibilidad: str, modelo_seleccionado) -> str:
+def normalizar_texto(texto: str) -> str:
     """
-    Función que corrige individualmente cada frase.
+    Normaliza el texto convirtiendo todo a minúsculas y eliminando espacios extras.
     """
-    # Añadido: Especificar claramente en el prompt que no se desea agregar nada adicional.
-    prompt = f"{comando_sensibilidad} Por favor, corrige la siguiente frase sin agregar comillas, paréntesis, signos de puntuación o cualquier otro texto que no sea una corrección directa: {frase}"
-    respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt)
-    return respuesta_corregida
+    texto = texto.lower()  # Convertir a minúsculas
+    texto = re.sub(r'\s+', ' ', texto).strip()  # Eliminar espacios extras
+    return texto
+
+def corregir_frase(frase: str, sensibilidad: int, modelo_seleccionado) -> str:
+    """
+    Función que corrige individualmente cada frase de acuerdo al nivel de sensibilidad.
+    Si la sensibilidad es 0, devuelve la frase sin cambios.
+    """
+    if sensibilidad == 0:
+        return frase  # Función identidad para nivel 0
+    
+    # Generar el prompt de corrección
+    prompt_correccion = generar_prompt_correccion(frase, sensibilidad)
+    
+    # Si el nivel de sensibilidad requiere corrección, llama al modelo para obtener la respuesta
+    if sensibilidad > 0:
+        respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt_correccion)
+        # Normalización a minúsculas y verificación de la corrección (implementar según lo discutido anteriormente)
+        respuesta_corregida = normalizar_texto(respuesta_corregida)
+        if es_correccion_valida(frase, respuesta_corregida):
+            return respuesta_corregida
+        else:
+            return normalizar_texto(frase)
+
+def es_correccion_valida(original: str, corregido: str) -> bool:
+    """
+    Verifica si la corrección es válida, es decir, si no agrega elementos innecesarios y corrige de forma apropiada.
+    """
+    original_norm = normalizar_texto(original)
+    corregido_norm = normalizar_texto(corregido)
+
+    # Comprueba si se han realizado correcciones ortográficas y gramaticales sin añadir elementos adicionales
+    if corregido_norm == original_norm or 'corrige la siguiente frase' in corregido_norm:
+        return False
+    # Permite correcciones específicas como "q" por "que"
+    corregido_norm = corregido_norm.replace(" q ", " que ")
+    # Otras correcciones específicas podrían agregarse aquí
+    # ...
+
+    # Comparar la frase original y la corregida para validar la corrección
+    return corregido_norm != original_norm
+
+def corregir_y_validar_frase(frase: str, sensibilidad: int, modelo_seleccionado) -> str:
+    """
+    Corrige una frase, la valida y la normaliza.
+    """
+    comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
+    respuesta_corregida = corregir_frase(frase, comando_sensibilidad, modelo_seleccionado)
+    
+    # Si la corrección no es válida, se devuelve la frase original normalizada
+    return respuesta_corregida if es_correccion_valida(frase, respuesta_corregida) else normalizar_texto(frase)
 
 def corregir_frases(frases: List[str], sensibilidad: int) -> List[str]:
     """Aplica corrección a cada frase en la lista basado en la sensibilidad."""
@@ -91,46 +158,6 @@ def corregir_frases(frases: List[str], sensibilidad: int) -> List[str]:
     
     # Asegúrate de pasar el comando de sensibilidad a la función corregir_frase
     return [corregir_frase(frase, comando_sensibilidad) for frase in frases]
-
-def es_correccion_valida(original: str, corregido: str) -> bool:
-    """
-    Verifica si la corrección es válida, es decir, si no agrega elementos
-    innecesarios como comillas o narrativa y solo aplica correcciones ortográficas.
-    """
-    # Normalizar ambos strings removiendo espacios extra y convirtiendo a minúsculas para una comparación base.
-    original_norm = re.sub(r'\s+', ' ', original).strip().lower()
-    corregido_norm = re.sub(r'\s+', ' ', corregido).strip().lower()
-
-    # Verificar que no se agreguen comillas o narrativa en la corrección.
-    if '"""' in corregido_norm or 'corrige la siguiente frase' in corregido_norm:
-        return False
-
-    # Permitir cambios en la puntuación al final de la frase
-    if original_norm.rstrip('.').rstrip('?').rstrip('!') != corregido_norm.rstrip('.').rstrip('?').rstrip('!'):
-        return False
-
-    # Permitir la capitalización de la primera letra
-    if original_norm[0].islower() and corregido_norm[0].isupper():
-        original_norm = original_norm[0].upper() + original_norm[1:]
-    
-    # Ahora, comprobar si, después de normalizar la capitalización, los textos son iguales.
-    if original_norm != corregido_norm:
-        return False
-
-    # Agrega más reglas según sea necesario
-
-    return True
-
-def corregir_y_validar_frase(frase: str, sensibilidad: int, modelo_seleccionado) -> str:
-    """
-    Corrige una frase y valida que la corrección no agregue elementos no deseados.
-    Si la corrección no es válida, devuelve la frase original.
-    """
-    comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
-    respuesta_corregida = corregir_frase(frase, comando_sensibilidad, modelo_seleccionado)
-    
-    # Solo devuelve la corrección si es válida, de lo contrario, devuelve la original
-    return respuesta_corregida if es_correccion_valida(frase, respuesta_corregida) else frase
 
 
 def corregir_frases_por_lote(frases: List[str], sensibilidad: int, tamaño_lote=5, modelo_seleccionado="gpt-3.5-turbo") -> List[str]:
