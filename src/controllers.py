@@ -1,7 +1,8 @@
 # src/controllers.py
 
 import pandas as pd
-from .methods import preprocesar_texto
+import streamlit as st
+from .methods import preprocesar_texto, analisis_sentimientos_transformers
 
 # Carga y preparación de los datos ----------------------------
 
@@ -61,3 +62,20 @@ def preparar_datos_para_analisis(df):
         df['Procesados'] = df['Originales'].apply(preprocesar_texto)
     return df
 
+def mostrar_analisis_sentimientos(df):
+    # Obtiene los sentimientos y puntuaciones
+    resultados_sentimientos = analisis_sentimientos_transformers(df['Corregidos'].tolist())
+    
+    # Separa los resultados en dos listas, una para etiquetas y otra para puntuaciones
+    etiquetas = [resultado['Etiqueta'] for resultado in resultados_sentimientos]
+    puntuaciones = [resultado['Puntuación'] for resultado in resultados_sentimientos]
+    
+    # Crea un DataFrame con los resultados
+    df_sentimientos = pd.DataFrame({
+        'Corregidos': df['Corregidos'],
+        'Etiqueta': etiquetas,
+        'Puntuación': puntuaciones,
+    })
+
+    # Muestra el DataFrame en Streamlit
+    st.write(df_sentimientos)

@@ -298,8 +298,8 @@ def analisis_sentimientos_transformers(frases):
     for frase in frases:
         resultado = nlp_sentimientos(frase)[0]
         resultados_sentimientos.append({
-            'label': resultado['label'],
-            'score': resultado['score']
+            'Etiqueta': resultado['label'],
+            'Puntuación': resultado['score']
         })
     return resultados_sentimientos
 
