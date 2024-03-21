@@ -73,7 +73,7 @@ def remove_punctuation(words: List[str]) -> List[str]:
 def generar_prompt_correccion(frase: str, nivel_sensibilidad: int) -> str:
    
     comando = comandos.get(nivel_sensibilidad, "")
-    prompt = f"Por favor, realiza una corrección de nivel {nivel_sensibilidad} siguiendo estas instrucciones: {comando} Corrige la frase: '{frase}'. Presenta SOLAMENTE el texto corregido, no añadas respuesta, texto o símbolos a la respuesta."
+    prompt = f"Realiza una corrección de nivel {nivel_sensibilidad} entre 0 y 10 donde 0 es no hacerle nada a la frase y 10 es la correción perfecta. Siguiendo estas instrucciones: {comando} \n Frase a corregir: '{frase}'. \n Presenta SOLAMENTE el texto corregido, no añadas respuesta, texto o símbolos a la respuesta, tampoco el punto final."
     return prompt
 
 def sensibilidad_a_comando(sensibilidad: int) -> str:
@@ -102,15 +102,13 @@ def corregir_frase(frase: str, sensibilidad: int, modelo_seleccionado) -> str:
     # Generar el prompt de corrección
     prompt_correccion = generar_prompt_correccion(frase, sensibilidad)
     
-    # Si el nivel de sensibilidad requiere corrección, llama al modelo para obtener la respuesta
-    if sensibilidad > 0:
-        respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt_correccion)
-        # Normalización a minúsculas y verificación de la corrección (implementar según lo discutido anteriormente)
-        respuesta_corregida = normalizar_texto(respuesta_corregida)
-        if es_correccion_valida(frase, respuesta_corregida):
-            return respuesta_corregida
-        else:
-            return normalizar_texto(frase)
+    respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt_correccion)
+    # Normalización a minúsculas y verificación de la corrección (implementar según lo discutido anteriormente)
+    respuesta_corregida = normalizar_texto(respuesta_corregida)
+    if es_correccion_valida(frase, respuesta_corregida):
+        return respuesta_corregida
+    else:
+        return normalizar_texto(frase)
 
 def es_correccion_valida(original: str, corregido: str) -> bool:
     """
@@ -120,7 +118,7 @@ def es_correccion_valida(original: str, corregido: str) -> bool:
     corregido_norm = normalizar_texto(corregido)
 
     # Comprueba si se han realizado correcciones ortográficas y gramaticales sin añadir elementos adicionales
-    if corregido_norm == original_norm or 'corrige la siguiente frase' in corregido_norm:
+    if corregido_norm == original_norm or '->' in corregido_norm:
         return False
     # Permite correcciones específicas como "q" por "que"
     corregido_norm = corregido_norm.replace(" q ", " que ")

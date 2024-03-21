@@ -16,7 +16,7 @@ from .methods import (
 )
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
 
-st.session_state.modelo_seleccionado = "gpt-3.5-turbo"
+st.session_state["modelo_seleccionado"] = "gpt-3.5-turbo"
 
 # Función para mostrar la página de bienvenida
 def welcome_page():
@@ -30,16 +30,13 @@ def welcome_page():
         st.session_state['df_procesado'] = None
     if 'reprocess_data' not in st.session_state:
         st.session_state['reprocess_data'] = False
-    if 'sensibilidad' not in st.session_state:
-        st.session_state['sensibilidad'] = 5
     
     st.title("Bienvenido a TextInsight")
     # Lista de modelos disponibles para seleccionar
     st.write("Text Insight es una herramienta de análisis de texto impulsada por modelos de Lenguaje de Aprendizaje Profundo (LLM) de Inteligencia Artificial, diseñada para descifrar, interpretar y revelar patrones ocultos y tendencias significativas en datos textuales complejos.")
     modelos_disponibles = ["gpt-3.5-turbo", "gpt-4", "davinci", "gpt-4-32k"]
     # Desplegable para seleccionar el modelo
-    st.session_state.modelo_seleccionado = st.selectbox("Selecciona el modelo de inteligencia artificial a utilizar:", modelos_disponibles)
-    
+    st.session_state["modelo_seleccionado"] = st.selectbox("Selecciona el modelo de inteligencia artificial a utilizar:", modelos_disponibles)
     # Muestra la descripción del modelo seleccionado
     descripcion = obtener_descripcion_modelo(st.session_state.modelo_seleccionado)
     st.write(descripcion)
@@ -57,10 +54,6 @@ def data_loading_page():
         st.session_state.corregidos_df = None
         
     st.title("Taller de Datos")
-    
-    # Inicialización de variables de estado si es necesario
-    if 'sensibilidad' not in st.session_state:
-        st.session_state.sensibilidad = 5  # Valor por defecto
 
     # Carga de archivos
     st.header("Cargar Datos")
@@ -73,7 +66,7 @@ def data_loading_page():
                 st.error("Formato de archivo no soportado o los datos no tienen el formato esperado.")
                 st.stop()
             else:
-                st.session_state.df = df
+                st.session_state["df"] = df
                 st.success("Datos cargados correctamente.")
         
         # Convertir el DataFrame a HTML y aplicar estilos CSS para centrar
@@ -94,27 +87,28 @@ def data_loading_page():
         col1, col2 = st.columns(2)
 
         with col1:
-            st.session_state.sensibilidad = st.slider("Sensibilidad de la corrección:", 0, 10, st.session_state.sensibilidad, 1)
-            st.markdown("_"+obtener_descripcion_sensibilidad(st.session_state.sensibilidad)+"_")
+            st.session_state["sensibilidad"] = st.slider("Sensibilidad de la corrección:", 0, 10, st.session_state.sensibilidad, 1)
+            st.markdown(f"_{obtener_descripcion_sensibilidad(st.session_state.sensibilidad)}_")
         
         with col2:
             if st.button("Corregir"):
                 with st.spinner("Corrigiendo datos:"):
-                    comando_sensibilidad = sensibilidad_a_comando(st.session_state.sensibilidad)
-                    st.session_state.df['Corregidos'] = st.session_state.df['Originales'].apply(
-                        lambda frase: corregir_frase(frase, st.session_state.sensibilidad, st.session_state.modelo_seleccionado)
+                    # comando_sensibilidad = sensibilidad_a_comando(st.session_state.sensibilidad)
+                    st.session_state["df"]['Corregidos'] = st.session_state["df"]['Originales'].apply(
+                        lambda frase: corregir_frase(frase, st.session_state["sensibilidad"], st.session_state["modelo_seleccionado"])
                     )
-
-                    st.session_state.corregidos_df = st.session_state.df  # Guarda el DataFrame corregido en un estado de sesión separado
+                    st.session_state["corregidos_df"] = st.session_state["df"]  # Guarda el DataFrame corregido en un estado de sesión separado
                 st.success("Corrección finalizada")
                     
-            if st.button("Procesar datos"):
-                with st.spinner("Procesando datos"):
-                    if 'Corregidos' in st.session_state.corregidos_df.columns:  # Verifica si la columna 'Corregidos' existe en el DataFrame corregido
-                        st.session_state.corregidos_df['Procesados'] = st.session_state.corregidos_df['Corregidos'].apply(preprocesar_texto)
-                        st.success("Datos procesados")
-                    else:
-                        st.error("Por favor, primero presiona el botón 'Corregir'.")
+            if "corregidos_df" in st.session_state:
+                if st.button("Procesar datos"):
+                    with st.spinner("Procesando datos"):
+                        if 'Corregidos' in st.session_state["corregidos_df"].columns:  # Verifica si la columna 'Corregidos' existe en el DataFrame corregido
+                            st.session_state["corregidos_df"]['Procesados'] = st.session_state["corregidos_df"]['Corregidos'].apply(
+                                preprocesar_texto)
+                            st.success("Datos procesados")
+                        else:
+                            st.error("Por favor, primero presiona el botón 'Corregir'.")
         
         st.header("Visualización de Datos")
         if st.session_state.corregidos_df is not None:
@@ -124,12 +118,12 @@ def data_loading_page():
             
         slider_val = st.slider("Selecciona cuántas filas mostrar:", 1, max(10, num_rows), min(10, num_rows))
         
-        if st.session_state.corregidos_df is not None:
-            st.write(st.session_state.corregidos_df.head(slider_val))
+        if st.session_state["corregidos_df"] is not None:
+            st.write(st.session_state["corregidos_df"].head(slider_val))
 
         # Mostrar análisis basado en una condición más relevante, como si 'Procesados' existe
         if st.session_state.corregidos_df is not None and 'Procesados' in st.session_state.corregidos_df.columns:
-            show_analysis(st.session_state.corregidos_df)
+            show_analysis(st.session_state["corregidos_df"])
                 
 # Función para la página de análisis
 def analysis_page():

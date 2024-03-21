@@ -19,7 +19,7 @@ if not api_key:
 openai.api_key = api_key
 
 
-def generar_respuesta(modelo_seleccionado, prompt, max_tokens=500):
+def generar_respuesta(modelo_seleccionado, prompt, max_tokens=1000):
     """
     Genera una respuesta del modelo seleccionado de OpenAI dado un prompt específico.
 
