@@ -8,7 +8,7 @@ from src.gui import run_app
 st.set_page_config(
     page_title='TextInsight',
     page_icon='logo.png',
-    layout="wide",
+    # layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
         'Get Help': 'https://www.example.com/help',
