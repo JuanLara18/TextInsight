@@ -11,11 +11,13 @@ import numpy as np
 import networkx as nx
 
 from typing import List
+
 from nltk.util import ngrams
 from collections import Counter
 from wordcloud import WordCloud
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
+
 from transformers import pipeline
 
 from src.connection import generar_respuesta 
@@ -24,19 +26,55 @@ from src.connection import generar_respuesta
 nlp = spacy.load('es_core_news_sm')
 nlp_sentimientos = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
 
+# src/methods.py
+
 comandos = {
-    0: "No se requiere ninguna acción.",
-    1: "Corrige únicamente errores ortográficos evidentes, como errores tipográficos o palabras mal escritas que alteren significativamente la comprensión del texto.",
-    2: "Corrige errores ortográficos claros sin cambiar el estilo ni la estructura del texto.",
-    3: "Realiza correcciones de errores ortográficos y gramaticales simples que no requieran reestructuración del texto.",
-    4: "Corrige errores ortográficos y gramaticales básicos, manteniendo el significado original del texto.",
-    5: "Corrige ortografía, gramática y puntuación para que el texto esté correctamente estructurado según las reglas estándar del idioma.",
-    6: "Corrige la ortografía, la gramática, la puntuación y realiza ajustes menores de estilo para mejorar la legibilidad.",
-    7: "Realiza una corrección completa de ortografía, gramática, puntuación y estilo, sin cambiar el significado original ni añadir contenido nuevo.",
-    8: "Además de realizar todas las correcciones anteriores, sugiere mejoras para clarificar el texto donde sea ambiguo o confuso.",
-    9: "Corrige todo lo anterior y sugiere mejoras en la claridad y el estilo para hacer el texto más atractivo y cautivador.",
-    10: "Realiza una corrección exhaustiva incluyendo ortografía, gramática, estilo y claridad, y realiza mejoras sustanciales para optimizar la expresión y el impacto del texto."
+    "Ninguna": "No se realizará ninguna corrección.",
+    "Leve": "Corrige únicamente errores ortográficos evidentes, como errores tipográficos o palabras mal escritas que alteren significativamente la comprensión del texto.",
+    "Moderado": "Corrige ortografía, gramática y puntuación para que el texto esté correctamente estructurado según las reglas estándar del idioma.",
+    "Exhaustivo": "Realiza una corrección exhaustiva incluyendo ortografía, gramática, estilo y claridad, y realiza mejoras sustanciales para optimizar la expresión y el impacto del texto."
 }
+
+def generar_prompt_correccion(frase: str, nivel_sensibilidad: str) -> str:
+    comando = comandos.get(nivel_sensibilidad, "")
+    prompt = f"Realiza una corrección {nivel_sensibilidad.lower()} siguiendo estas instrucciones: {comando} \n Frase a corregir: '{frase}'. \n Presenta SOLAMENTE el texto corregido, no añadas respuesta, texto o símbolos a la respuesta, tampoco el punto final."
+    return prompt
+
+def sensibilidad_a_comando(sensibilidad: str) -> str:
+    """Convierte el nivel de sensibilidad en un comando específico para el modelo."""
+    return comandos.get(sensibilidad, "No se realizará ninguna corrección.")
+
+def corregir_y_procesar_datos(df, sensibilidad, modelo_seleccionado):
+    """
+    Corrige y preprocesa los datos del DataFrame.
+    
+    Args:
+    - df: DataFrame original con la columna 'Originales'.
+    - sensibilidad: Nivel de sensibilidad para la corrección.
+    - modelo_seleccionado: Modelo de AI seleccionado para la corrección.
+    
+    Returns:
+    - DataFrame con columnas 'Originales', 'Corregidos' y 'Procesados'.
+    """
+    if sensibilidad == "Ninguna":
+        df['Corregidos'] = df['Originales']
+    else:
+        df['Corregidos'] = df['Originales'].apply(
+            lambda frase: corregir_frase(frase, sensibilidad, modelo_seleccionado)
+        )
+    df['Procesados'] = df['Corregidos'].apply(preprocesar_texto)
+    return df
+
+def visualizar_datos(df):
+    """
+    Muestra un DataFrame en Streamlit.
+    
+    Args:
+    - df: DataFrame a mostrar.
+    """
+    st.write(df)
+
+
 
 ###################################################################
 ####################### Taller de datos ###########################
@@ -70,18 +108,119 @@ def remove_punctuation(words: List[str]) -> List[str]:
 
 # Corrección -----------------------------------------------------------
 
-def generar_prompt_correccion(frase: str, nivel_sensibilidad: int) -> str:
+# def generar_prompt_correccion(frase: str, nivel_sensibilidad: int) -> str:
    
-    comando = comandos.get(nivel_sensibilidad, "")
-    prompt = f"Realiza una corrección de nivel {nivel_sensibilidad} entre 0 y 10 donde 0 es no hacerle nada a la frase y 10 es la correción perfecta. Siguiendo estas instrucciones: {comando} \n Frase a corregir: '{frase}'. \n Presenta SOLAMENTE el texto corregido, no añadas respuesta, texto o símbolos a la respuesta, tampoco el punto final."
-    return prompt
+#     comando = comandos.get(nivel_sensibilidad, "")
+#     prompt = f"Realiza una corrección de nivel {nivel_sensibilidad} entre 0 y 10 donde 0 es no hacerle nada a la frase y 10 es la correción perfecta. Siguiendo estas instrucciones: {comando} \n Frase a corregir: '{frase}'. \n Presenta SOLAMENTE el texto corregido, no añadas respuesta, texto o símbolos a la respuesta, tampoco el punto final."
+#     return prompt
 
-def sensibilidad_a_comando(sensibilidad: int) -> str:
-    """Convierte el nivel de sensibilidad en un comando específico para el modelo."""
-    return comandos.get(sensibilidad, "Realizar una corrección moderada.")
+# def sensibilidad_a_comando(sensibilidad: int) -> str:
+#     """Convierte el nivel de sensibilidad en un comando específico para el modelo."""
+#     return comandos.get(sensibilidad, "Realizar una corrección moderada.")
+
+# def obtener_descripcion_sensibilidad(n):
+#     return comandos[n]
+
+# def normalizar_texto(texto: str) -> str:
+#     """
+#     Normaliza el texto convirtiendo todo a minúsculas y eliminando espacios extras.
+#     """
+#     texto = texto.lower()  # Convertir a minúsculas
+#     texto = re.sub(r'\s+', ' ', texto).strip()  # Eliminar espacios extras
+#     return texto
+
+# def corregir_frase(frase: str, sensibilidad: int, modelo_seleccionado) -> str:
+#     """
+#     Función que corrige individualmente cada frase de acuerdo al nivel de sensibilidad.
+#     Si la sensibilidad es 0, devuelve la frase sin cambios.
+#     """
+#     if sensibilidad == 0:
+#         return frase  # Función identidad para nivel 0
+    
+#     # Generar el prompt de corrección
+#     prompt_correccion = generar_prompt_correccion(frase, sensibilidad)
+    
+#     respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt_correccion)
+#     # Normalización a minúsculas y verificación de la corrección (implementar según lo discutido anteriormente)
+#     respuesta_corregida = normalizar_texto(respuesta_corregida)
+#     if es_correccion_valida(frase, respuesta_corregida):
+#         return respuesta_corregida
+#     else:
+#         return normalizar_texto(frase)
+
+# def es_correccion_valida(original: str, corregido: str) -> bool:
+#     """
+#     Verifica si la corrección es válida, es decir, si no agrega elementos innecesarios y corrige de forma apropiada.
+#     """
+#     original_norm = normalizar_texto(original)
+#     corregido_norm = normalizar_texto(corregido)
+
+#     # Comprueba si se han realizado correcciones ortográficas y gramaticales sin añadir elementos adicionales
+#     if corregido_norm == original_norm or '->' in corregido_norm:
+#         return False
+#     # Permite correcciones específicas como "q" por "que"
+#     corregido_norm = corregido_norm.replace(" q ", " que ")
+#     # Otras correcciones específicas podrían agregarse aquí
+#     # ...
+
+#     # Comparar la frase original y la corregida para validar la corrección
+#     return corregido_norm != original_norm
+
+# def corregir_y_validar_frase(frase: str, sensibilidad: int, modelo_seleccionado) -> str:
+#     """
+#     Corrige una frase, la valida y la normaliza.
+#     """
+#     comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
+#     respuesta_corregida = corregir_frase(frase, comando_sensibilidad, modelo_seleccionado)
+    
+#     # Si la corrección no es válida, se devuelve la frase original normalizada
+#     return respuesta_corregida if es_correccion_valida(frase, respuesta_corregida) else normalizar_texto(frase)
+
+# def corregir_frases(frases: List[str], sensibilidad: int) -> List[str]:
+#     """Aplica corrección a cada frase en la lista basado en la sensibilidad."""
+#     # Convertimos el nivel de sensibilidad a un comando entendible para el modelo
+#     comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
+    
+#     # Asegúrate de pasar el comando de sensibilidad a la función corregir_frase
+#     return [corregir_frase(frase, comando_sensibilidad) for frase in frases]
+
+# def corregir_frases_por_lote(frases: List[str], sensibilidad: int, tamaño_lote=5, modelo_seleccionado="gpt-3.5-turbo") -> List[str]:
+#     """Aplica la corrección a cada frase en la lista en lotes."""
+#     # Convertimos el nivel de sensibilidad a un comando entendible para el modelo
+#     comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
+    
+#     # Crea una lista para almacenar las frases corregidas
+#     frases_corregidas = []
+    
+#     # Divide las frases en lotes
+#     for i in range(0, len(frases), tamaño_lote):
+#         lote = frases[i:i+tamaño_lote]
+        
+#         # Crea un prompt de lote con todas las frases en el lote
+#         lote_prompt = ' '.join([f"{comando_sensibilidad} Corrige la siguiente frase: {frase}" for frase in lote])
+        
+#         # Obtiene la respuesta del modelo para el lote
+#         respuesta_lote = generar_respuesta(modelo_seleccionado, lote_prompt)
+        
+#         # Divide la respuesta del lote en frases individuales y las añade a la lista de frases corregidas
+#         frases_corregidas.extend(respuesta_lote.split('\n'))
+    
+#     return frases_corregidas
+
+import re
+from typing import List
+import unicodedata
+from .connection import generar_respuesta
+
+comandos = {
+    "Ninguna": "No se realizará ninguna corrección.",
+    "Leve": "Corrige únicamente errores ortográficos evidentes, como errores tipográficos o palabras mal escritas que alteren significativamente la comprensión del texto.",
+    "Moderado": "Corrige ortografía, gramática y puntuación para que el texto esté correctamente estructurado según las reglas estándar del idioma.",
+    "Exhaustivo": "Realiza una corrección exhaustiva incluyendo ortografía, gramática, estilo y claridad, y realiza mejoras sustanciales para optimizar la expresión y el impacto del texto."
+}
 
 def obtener_descripcion_sensibilidad(n):
-    return comandos[n]
+    return comandos.get(n, "Nivel de corrección no especificado")
 
 def normalizar_texto(texto: str) -> str:
     """
@@ -91,19 +230,19 @@ def normalizar_texto(texto: str) -> str:
     texto = re.sub(r'\s+', ' ', texto).strip()  # Eliminar espacios extras
     return texto
 
-def corregir_frase(frase: str, sensibilidad: int, modelo_seleccionado) -> str:
+def corregir_frase(frase: str, sensibilidad: str, modelo_seleccionado) -> str:
     """
     Función que corrige individualmente cada frase de acuerdo al nivel de sensibilidad.
-    Si la sensibilidad es 0, devuelve la frase sin cambios.
+    Si la sensibilidad es "Ninguna", devuelve la frase sin cambios.
     """
-    if sensibilidad == 0:
-        return frase  # Función identidad para nivel 0
+    if sensibilidad == "Ninguna":
+        return frase  # Función identidad para nivel "Ninguna"
     
     # Generar el prompt de corrección
     prompt_correccion = generar_prompt_correccion(frase, sensibilidad)
     
     respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt_correccion)
-    # Normalización a minúsculas y verificación de la corrección (implementar según lo discutido anteriormente)
+    # Normalización a minúsculas y verificación de la corrección
     respuesta_corregida = normalizar_texto(respuesta_corregida)
     if es_correccion_valida(frase, respuesta_corregida):
         return respuesta_corregida
@@ -128,30 +267,22 @@ def es_correccion_valida(original: str, corregido: str) -> bool:
     # Comparar la frase original y la corregida para validar la corrección
     return corregido_norm != original_norm
 
-def corregir_y_validar_frase(frase: str, sensibilidad: int, modelo_seleccionado) -> str:
+def corregir_y_validar_frase(frase: str, sensibilidad: str, modelo_seleccionado) -> str:
     """
     Corrige una frase, la valida y la normaliza.
     """
-    comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
-    respuesta_corregida = corregir_frase(frase, comando_sensibilidad, modelo_seleccionado)
+    respuesta_corregida = corregir_frase(frase, sensibilidad, modelo_seleccionado)
     
     # Si la corrección no es válida, se devuelve la frase original normalizada
     return respuesta_corregida if es_correccion_valida(frase, respuesta_corregida) else normalizar_texto(frase)
 
-def corregir_frases(frases: List[str], sensibilidad: int) -> List[str]:
+def corregir_frases(frases: List[str], sensibilidad: str) -> List[str]:
     """Aplica corrección a cada frase en la lista basado en la sensibilidad."""
-    # Convertimos el nivel de sensibilidad a un comando entendible para el modelo
-    comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
-    
     # Asegúrate de pasar el comando de sensibilidad a la función corregir_frase
-    return [corregir_frase(frase, comando_sensibilidad) for frase in frases]
+    return [corregir_frase(frase, sensibilidad) for frase in frases]
 
-
-def corregir_frases_por_lote(frases: List[str], sensibilidad: int, tamaño_lote=5, modelo_seleccionado="gpt-3.5-turbo") -> List[str]:
+def corregir_frases_por_lote(frases: List[str], sensibilidad: str, tamaño_lote=5, modelo_seleccionado="gpt-3.5-turbo") -> List[str]:
     """Aplica la corrección a cada frase en la lista en lotes."""
-    # Convertimos el nivel de sensibilidad a un comando entendible para el modelo
-    comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
-    
     # Crea una lista para almacenar las frases corregidas
     frases_corregidas = []
     
@@ -160,13 +291,16 @@ def corregir_frases_por_lote(frases: List[str], sensibilidad: int, tamaño_lote=
         lote = frases[i:i+tamaño_lote]
         
         # Crea un prompt de lote con todas las frases en el lote
-        lote_prompt = ' '.join([f"{comando_sensibilidad} Corrige la siguiente frase: {frase}" for frase in lote])
-        
-        # Obtiene la respuesta del modelo para el lote
-        respuesta_lote = generar_respuesta(modelo_seleccionado, lote_prompt)
-        
-        # Divide la respuesta del lote en frases individuales y las añade a la lista de frases corregidas
-        frases_corregidas.extend(respuesta_lote.split('\n'))
+        if sensibilidad == "Ninguna":
+            frases_corregidas.extend(lote)
+        else:
+            lote_prompt = ' '.join([f"{comandos[sensibilidad]} Corrige la siguiente frase: {frase}" for frase in lote])
+            
+            # Obtiene la respuesta del modelo para el lote
+            respuesta_lote = generar_respuesta(modelo_seleccionado, lote_prompt)
+            
+            # Divide la respuesta del lote en frases individuales y las añade a la lista de frases corregidas
+            frases_corregidas.extend(respuesta_lote.split('\n'))
     
     return frases_corregidas
 
@@ -230,11 +364,33 @@ def show_analysis(df):
     Parámetros:
     - df (DataFrame): DataFrame con las columnas 'Originales', 'Corregidos', 'Procesados'.
     """
-    st.subheader("Análisis de los cambios")
-    st.markdown("- La Distancia de Levenshtein es como contar cuántos errores de tipeo necesitarías corregir para hacer que un texto se convierta en el otro; menor número, más parecidos son. [Más información](https://en.wikipedia.org/wiki/Levenshtein_distance)")
-    st.markdown("- La Distancia de Jaccard es como mirar dos listas de palabras y calcular qué porcentaje comparten; un porcentaje más alto significa que los textos tienen más palabras en común. [Más información](https://en.wikipedia.org/wiki/Jaccard_index)")
-    st.markdown("- La Similitud del Coseno con TF-IDF evalúa qué tan parecidos son dos textos en cuanto a sus temas principales, no solo por las palabras exactas que usan. Un valor cercano a 1 indica que los textos tratan sobre temas muy similares, mientras que un valor cercano a 0 sugiere que hablan de temas distintos. [Más información sobre Similitud del Coseno](https://en.wikipedia.org/wiki/Cosine_similarity) y [TF-IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf)")
+    st.header("Análisis de los cambios")
+    st.markdown("En esta sección se presentan varios análisis de los datos procesados. A continuación, se muestran las métricas calculadas y sus explicaciones, seguidas de sugerencias para mejorar el análisis.")
+
+    # Descripciones estadísticas del texto
+    st.markdown("### Descripciones estadísticas del texto")
+    st.markdown("Se presentan las descripciones estadísticas de las columnas 'Originales', 'Corregidos' y 'Procesados'. Estas estadísticas incluyen la longitud promedio del texto, la cantidad de datos nulos y la cantidad promedio de palabras por columna.")
+    estadisticas = calcular_estadisticas(df)
+    st.write(estadisticas)
+    st.markdown("- **Longitud Promedio de los Textos**: Muestra la longitud promedio de los textos en cada columna. Esto puede ayudar a entender la complejidad y la extensión del contenido procesado.")
+    st.markdown("- **Datos Nulos**: Indica la cantidad de valores nulos en cada columna. Es importante asegurarse de que no haya demasiados datos faltantes, ya que esto puede afectar la calidad del análisis.")
+    st.markdown("- **Cantidad de Palabras Promedio**: Muestra la cantidad promedio de palabras en los textos de cada columna. Esto puede dar una idea de la densidad informativa de los textos.")
+
+    
+    st.markdown("### Cuadro de métricas")
+    st.markdown("A continuación se presentan las métricas de distancia de Levenshtein, distancia de Jaccard y similitud del coseno con TF-IDF para comparar las columnas 'Originales', 'Corregidos' y 'Procesados'. Estas métricas ayudan a evaluar la similitud y las diferencias entre los textos en cada etapa del procesamiento.")
     st.write(distancias_palabras(df))
+    st.markdown("- **Distancia de Levenshtein**: Mide el número mínimo de operaciones necesarias para transformar una cadena de caracteres en otra. Operaciones posibles incluyen inserciones, eliminaciones o sustituciones de un solo carácter. Una distancia menor indica que las frases son más similares. [Más información](https://en.wikipedia.org/wiki/Levenshtein_distance).")
+    st.markdown("- **Distancia de Jaccard**: Mide la similitud entre dos conjuntos de datos. Se calcula como el tamaño de la intersección dividido por el tamaño de la unión de los conjuntos de palabras. Un valor más alto indica una mayor similitud. [Más información](https://en.wikipedia.org/wiki/Jaccard_index).")
+    st.markdown("- **Similitud del Coseno con TF-IDF**: Evalúa la similitud entre dos textos en función de sus representaciones vectoriales. Un valor cercano a 1 indica que los textos tratan sobre temas muy similares, mientras que un valor cercano a 0 sugiere que hablan de temas distintos. [Más información sobre Similitud del Coseno](https://en.wikipedia.org/wiki/Cosine_similarity) y [TF-IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf).")
+    
+    
+    # Sugerencias para mejorar el análisis
+    st.markdown("### Sugerencias para Mejorar el Análisis")
+    st.markdown("- **Asegúrese de la Calidad del Texto**: Textos con muchos errores tipográficos o gramaticales pueden afectar negativamente los resultados del análisis. Utilice niveles de corrección adecuados.")
+    st.markdown("- **Elija el Modelo Apropiado**: Dependiendo de la complejidad y el volumen de los textos, seleccionar un modelo más avanzado como GPT-4 puede proporcionar mejores resultados, aunque a un costo mayor.")
+    #st.markdown("- **Considere el Contexto de los Textos**: Al analizar textos, es importante considerar el contexto en el que fueron escritos. Esto puede proporcionar insights adicionales y mejorar la interpretación de los resultados.")
+
     
 ###################################################################
 ###################### Análisis de datos ##########################
@@ -262,7 +418,7 @@ def generate_wordcloud(frases: List[str]):
     texto = ' '.join(frases)
     
     # Crear una nube de palabras con fondo blanco y especificando algunas configuraciones adicionales
-    wordcloud = WordCloud(width=2048, height=1080, background_color='white', colormap='viridis').generate(texto)
+    wordcloud = WordCloud(width=1280, height=720, background_color='white', colormap='viridis').generate(texto)
     
     fig = plt.figure(figsize=(15,8))
     plt.imshow(wordcloud, interpolation='bilinear') # Usar interpolación bilinear para suavizar los bordes de las palabras
@@ -295,11 +451,55 @@ def analisis_sentimientos_transformers(frases):
     resultados_sentimientos = []
     for frase in frases:
         resultado = nlp_sentimientos(frase)[0]
+        sentimiento = {
+            '1 star': 'Muy Negativo',
+            '2 stars': 'Negativo',
+            '3 stars': 'Neutro',
+            '4 stars': 'Positivo',
+            '5 stars': 'Muy Positivo'
+        }.get(resultado['label'], 'Neutro')  # Predeterminado a 'Neutro' si la etiqueta no coincide
         resultados_sentimientos.append({
-            'Etiqueta': resultado['label'],
-            'Puntuación': resultado['score']
+            'Sentimiento': sentimiento,
+            'Confiabilidad': resultado['score']
         })
     return resultados_sentimientos
+
+
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def mostrar_analisis_sentimientos(df):
+    """Muestra el análisis de sentimientos con un gráfico de distribución."""
+    resultados_sentimientos = analisis_sentimientos_transformers(df['Corregidos'].tolist())
+    
+    # Crear un DataFrame con los resultados y agregar la columna 'Originales'
+    df_sentimientos = pd.DataFrame(resultados_sentimientos)
+    df_sentimientos['Originales'] = df['Originales']
+    
+    # Mostrar el DataFrame en Streamlit
+    st.write(df_sentimientos)
+    
+    # Crear un gráfico de la distribución de sentimientos
+    plt.figure(figsize=(10, 6))
+    sns.countplot(data=df_sentimientos, x='Sentimiento', palette='viridis', order=['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
+    plt.title('Distribución de Sentimientos')
+    plt.xlabel('Sentimiento')
+    plt.ylabel('Frecuencia')
+    plt.xticks(rotation=45)
+    st.pyplot(plt)
+    
+    # Crear un gráfico de promedio de confiabilidad por sentimiento
+    plt.figure(figsize=(10, 6))
+    promedio_confiabilidad = df_sentimientos.groupby('Sentimiento')['Confiabilidad'].mean().reindex(['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
+    sns.barplot(x=promedio_confiabilidad.index, y=promedio_confiabilidad.values, palette='viridis')
+    plt.title('Promedio de Confiabilidad por Sentimiento')
+    plt.xlabel('Sentimiento')
+    plt.ylabel('Promedio de Confiabilidad')
+    plt.xticks(rotation=45)
+    st.pyplot(plt)
+
+
 
 # Grafo ----------------------------------------------------------------
 
@@ -322,3 +522,148 @@ def ngramas_a_grafo(frases_procesadas, n):
 ###################################################################
 ####################### Exportar datos ############################
 ###################################################################
+
+def extract_project_info_from_file(file_content: str) -> dict:
+    """
+    Extrae la información del proyecto desde el contenido de un archivo de texto.
+
+    Args:
+    - file_content: Contenido del archivo de texto.
+
+    Returns:
+    - Un diccionario con el nombre del proyecto, descripción, palabras clave y notas adicionales.
+    """
+    info = {
+        "proyecto_nombre": "",
+        "proyecto_descripcion": "",
+        "palabras_clave": "",
+        "notas_adicionales": ""
+    }
+    
+    lines = file_content.split('\n')
+    
+    for line in lines:
+        if line.lower().startswith("nombre del proyecto:"):
+            info["proyecto_nombre"] = line.split(":", 1)[1].strip()
+        elif line.lower().startswith("descripción del proyecto:"):
+            info["proyecto_descripcion"] = line.split(":", 1)[1].strip()
+        elif line.lower().startswith("palabras clave:"):
+            info["palabras_clave"] = line.split(":", 1)[1].strip()
+        elif line.lower().startswith("notas adicionales:"):
+            info["notas_adicionales"] = line.split(":", 1)[1].strip()
+    
+    return info
+
+# def corregir_y_procesar_datos(df, sensibilidad, modelo_seleccionado):
+#     """
+#     Corrige y preprocesa los datos del DataFrame.
+    
+#     Args:
+#     - df: DataFrame original con la columna 'Originales'.
+#     - sensibilidad: Nivel de sensibilidad para la corrección.
+#     - modelo_seleccionado: Modelo de AI seleccionado para la corrección.
+    
+#     Returns:
+#     - DataFrame con columnas 'Originales', 'Corregidos' y 'Procesados'.
+#     """
+#     df['Corregidos'] = df['Originales'].apply(
+#         lambda frase: corregir_frase(frase, sensibilidad, modelo_seleccionado)
+#     )
+#     df['Procesados'] = df['Corregidos'].apply(preprocesar_texto)
+#     return df
+
+# def visualizar_datos(df):
+#     """
+#     Muestra un DataFrame en Streamlit.
+    
+#     Args:
+#     - df: DataFrame a mostrar.
+#     """
+#     st.write(df)
+
+# src/methods.py
+
+import numpy as np
+
+def calcular_estadisticas(df):
+    """
+    Calcula descripciones estadísticas del DataFrame.
+    
+    Args:
+    - df: DataFrame con columnas 'Originales', 'Corregidos' y 'Procesados'.
+    
+    Returns:
+    - Un DataFrame con las estadísticas calculadas.
+    """
+    estadisticas = {}
+    
+    for col in df.columns:
+        estadisticas[col] = {
+            "Longitud Promedio": df[col].apply(len).mean(),
+            "Datos Nulos": df[col].isnull().sum(),
+            "Cantidad de Palabras Promedio": df[col].apply(lambda x: len(x.split())).mean()
+        }
+    
+    return pd.DataFrame(estadisticas).transpose()
+
+
+# src/methods.py
+
+# def calcular_costo(tokens_entrada, tokens_salida, modelo):
+#     precios = {
+#         "gpt-3.5-turbo": {"entrada": 0.0015, "salida": 0.002},
+#         "gpt-3.5-turbo-16k": {"entrada": 0.003, "salida": 0.004},
+#         "gpt-4": {"entrada": 0.03, "salida": 0.06},
+#         "gpt-4-32k": {"entrada": 0.06, "salida": 0.12}
+#     }
+#     costo_entrada = tokens_entrada / 1000 * precios[modelo]["entrada"]
+#     costo_salida = tokens_salida / 1000 * precios[modelo]["salida"]
+#     return costo_entrada + costo_salida
+
+
+# def estimar_tiempo_procesamiento(df, modelo_seleccionado):
+#     tiempo_por_token = 0.05  # 50 ms por token como suposición
+#     total_tokens = df['Originales'].apply(len).sum() / 4  # Aproximación de tokens
+#     tiempo_estimado = total_tokens * tiempo_por_token  # Tiempo en segundos
+
+#     # Ajuste según el modelo
+#     modelo_tiempos = {
+#         "gpt-3.5-turbo": 1,
+#         "gpt-3.5-turbo-16k": 1.5,
+#         "gpt-4": 2,
+#         "gpt-4-32k": 2.5
+#     }
+#     factor_modelo = modelo_tiempos.get(modelo_seleccionado, 1)
+#     tiempo_estimado *= factor_modelo
+
+#     return tiempo_estimado / 60  # Convertir a minutos
+
+
+
+
+def calcular_costo(tokens_entrada, tokens_salida, modelo):
+    precios = {
+        "gpt-3.5-turbo": {"entrada": 0.0015, "salida": 0.002},
+        "gpt-3.5-turbo-16k": {"entrada": 0.003, "salida": 0.004},
+        "gpt-4": {"entrada": 0.03, "salida": 0.06},
+        "gpt-4-32k": {"entrada": 0.06, "salida": 0.12}
+    }
+    costo_entrada = tokens_entrada / 1000 * precios[modelo]["entrada"]
+    costo_salida = tokens_salida / 1000 * precios[modelo]["salida"]
+    return costo_entrada + costo_salida
+
+def estimar_tiempo_procesamiento(df, modelo_seleccionado):
+    tiempo_por_token = 0.05  # 50 ms por token como suposición
+    total_tokens = df['Originales'].apply(len).sum() / 4  # Aproximación de tokens
+    tiempo_estimado = total_tokens * tiempo_por_token  # Tiempo en segundos
+
+    modelo_tiempos = {
+        "gpt-3.5-turbo": 1,
+        "gpt-3.5-turbo-16k": 1.5,
+        "gpt-4": 2,
+        "gpt-4-32k": 2.5
+    }
+    factor_modelo = modelo_tiempos.get(modelo_seleccionado, 1)
+    tiempo_estimado *= factor_modelo
+
+    return tiempo_estimado / 60  # Convertir a minutos

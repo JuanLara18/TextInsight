@@ -1,71 +1,68 @@
-# Text Insight
+# TextInsight
 
-Text Insight es una avanzada herramienta de análisis de texto impulsada por modelos de Lenguaje de Aprendizaje Profundo (LLM) de Inteligencia Artificial, diseñada para descifrar, interpretar y revelar patrones ocultos y tendencias significativas en datos textuales complejos.
+TextInsight es una herramienta de análisis de texto impulsada por modelos de Lenguaje de Aprendizaje Profundo (LLM) de Inteligencia Artificial, diseñada para descifrar, interpretar y revelar patrones ocultos y tendencias significativas en datos textuales complejos.
 
-## Estructura de Archivos
+## Características Principales
 
-El proyecto está organizado de la siguiente manera:
+### 1. Página de Bienvenida
+- **Selección del Modelo de Lenguaje**: Elige entre GPT-3.5 Turbo, GPT-4, Davinci, y GPT-4-32k.
+- **Descripción del Modelo**: Muestra una breve descripción del modelo seleccionado.
+- **Comparación de Modelos**: Visualización gráfica comparativa de los modelos disponibles.
 
-- `main.py`: Archivo principal que inicia la aplicación Streamlit.
-- `src/`:
-  - `gui.py`: Define la interfaz de usuario de la aplicación.
-  - `methods.py`: Contiene las funciones de procesamiento y análisis de texto.
-  - `controllers.py`: Gestiona la carga y preparación de datos.
-  - `connections.py`: Maneja la conexión con la API de OpenAI y la generación de gráficos comparativos.
-- `requirements.txt`: Lista todas las dependencias necesarias para ejecutar la aplicación.
+### 2. Marco del Proyecto
+- **Ingreso de Información del Proyecto**:
+  - **Formulario Manual**: Introduce el nombre del proyecto, descripción, palabras clave y notas adicionales.
+  - **Cargar Archivo**: Sube un archivo de texto (.txt) para extraer automáticamente la información del proyecto.
+  
+### 3. Taller de Datos
+- **Carga de Archivos**: Soporta archivos en formatos Excel, CSV, SPSS y TXT.
+- **Corrección y Preprocesamiento de Datos**:
+  - Selecciona el nivel de corrección (Ninguna, Leve, Moderado, Exhaustivo).
+  - Estima el costo y el tiempo de procesamiento antes de realizar la corrección.
+  - Visualización de los datos cargados y corregidos.
+  - Análisis de datos corregidos, incluyendo descripciones estadísticas y visualizaciones.
 
-## Configuración
+### 4. Análisis de Datos
+- **Nube de Palabras**: Genera una visualización de las palabras más frecuentes en el texto procesado.
+- **Análisis de N-Gramas**: Identifica frases comunes y patrones lingüísticos en el texto.
+- **Análisis de Sentimientos**:
+  - Evaluación del tono emocional del texto.
+  - Visualización de la distribución de sentimientos y confiabilidad.
+  - Promedio de confiabilidad por sentimiento.
+- **Generación de Grafos**: Visualiza las relaciones entre palabras en el texto.
+- **Identificación de Temas**: Agrupa documentos en categorías significativas para entender mejor el contenido.
 
-### Requisitos Previos
+### 5. Exportar Resultados
+- **Exportación de Resultados**: Configuración y exportación de los resultados del análisis.
 
-Asegúrate de tener Python instalado en tu sistema. Este proyecto ha sido desarrollado con Python 3.8, pero debería ser compatible con versiones más recientes.
+## Instalación
 
-### Instalación
-
-1. Clona este repositorio en tu máquina local.
-2. Abre una terminal y navega al directorio del proyecto.
-3. Crea un entorno virtual Python:
-   
-   ```bash
-   python -m venv .venv
+1. Clona este repositorio:
+   ```sh
+   git clone https://github.com/tu_usuario/TextInsight.git
    ```
-   
-4. Activa el entorno virtual:
-
-   - En Windows:
-     ```cmd
-     .venv\Scripts\activate
-     ```
-   - En macOS/Linux:
-     ```bash
-     source .venv/bin/activate
-     ```
-
-5. Instala las dependencias del proyecto:
-   
-   ```bash
+2. Navega al directorio del proyecto:
+   ```sh
+   cd TextInsight
+   ```
+3. Crea y activa un entorno virtual:
+   ```sh
+   python -m venv venv
+   source venv/bin/activate  # En Windows usa `venv\Scripts\activate`
+   ```
+4. Instala las dependencias:
+   ```sh
    pip install -r requirements.txt
    ```
 
-### Configuración de la API Key de OpenAI
+## Uso
 
-Debes establecer tu API key de OpenAI como una variable de entorno:
+1. Ejecuta la aplicación Streamlit:
+   ```sh
+   streamlit run src/gui.py
+   ```
+2. Accede a la aplicación en tu navegador en `http://localhost:8501`.
 
-- En Windows, ejecuta:
-  ```cmd
-  set OPENAI_API_KEY=tu_api_key_aquí
-  ```
-- En macOS/Linux, ejecuta:
-  ```bash
-  export OPENAI_API_KEY=tu_api_key_aquí
-  ```
+## Contacto
 
-## Ejecución
-
-Para ejecutar la aplicación, asegúrate de que el entorno virtual esté activado y ejecuta:
-
-```bash
-streamlit run main.py
-```
-
-La aplicación debería abrirse automáticamente en tu navegador predeterminado.
+[Juan Lara - Ipsos](juan.lara@ipsos.com).
