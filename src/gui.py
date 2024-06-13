@@ -178,55 +178,83 @@ def analysis_page():
         # Expander para la nube de palabras
         with st.expander("Nube de Palabras"):
             st.markdown("Genera una visualización de las palabras más frecuentes en el texto procesado. Esto puede ayudarte a identificar rápidamente los temas principales y las palabras clave.")
+            texto_procesado_para_nube = ' '.join(df['Procesados'].tolist())
+            tokens_entrada = len(texto_procesado_para_nube.split())
+            costo = 0  # No hay costo de API
+            tiempo_estimado = 1  # 1 minuto como tiempo constante estimado
+            st.write(f"El costo estimado es: ${costo:.4f}")
+            st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Generar Nube de Palabras"):
-                texto_procesado_para_nube = ' '.join(df['Procesados'].tolist())
-                fig = generate_wordcloud([texto_procesado_para_nube])
-                st.pyplot(fig)
+                with st.spinner("Generando nube de palabras..."):
+                    fig = generate_wordcloud([texto_procesado_para_nube])
+                    st.pyplot(fig)
 
         # Expander para los n-gramas
         with st.expander("N-Gramas"):
             st.markdown("Los n-gramas son secuencias de n palabras consecutivas en el texto. Analizar los n-gramas puede ayudarte a identificar frases comunes y patrones lingüísticos.")
             n_value = st.number_input("Especifica el valor de n para los n-gramas", min_value=1, value=2, key='n_value_ngrams')
             top_n = st.slider("Selecciona cuántos n-gramas más comunes mostrar:", 1, 20, 5, key='top_n_ngrams')
+            texto_procesado_para_ngramas = df['Procesados'].tolist()
+            tokens_entrada = len(' '.join(texto_procesado_para_ngramas).split())
+            costo = 0  # No hay costo de API
+            tiempo_estimado = 1  # 1 minuto como tiempo constante estimado
+            st.write(f"El costo estimado es: ${costo:.4f}")
+            st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Generar N-Gramas"):
-                texto_procesado_para_ngramas = df['Procesados'].tolist()
-                ngramas_resultado = calculate_top_n_grams(texto_procesado_para_ngramas, n_value, top_n)
-                df_ngramas = ngramas_a_dataframe(ngramas_resultado)
-                st.dataframe(df_ngramas)
+                with st.spinner("Generando n-gramas..."):
+                    ngramas_resultado = calculate_top_n_grams(texto_procesado_para_ngramas, n_value, top_n)
+                    df_ngramas = ngramas_a_dataframe(ngramas_resultado)
+                    st.dataframe(df_ngramas)
 
         # Expander para el análisis de sentimientos
         with st.expander("Análisis de Sentimientos"):
             st.markdown("El análisis de sentimientos evalúa el tono emocional del texto. Esto es útil para comprender la opinión general y el sentimiento de los textos.")
+            tokens_entrada = len(' '.join(df['Corregidos'].tolist()).split())
+            tokens_salida = tokens_entrada  # Suponemos que la salida tiene la misma longitud que la entrada
+            costo = calcular_costo(tokens_entrada, tokens_salida, st.session_state["modelo_seleccionado"])
+            tiempo_estimado = estimar_tiempo_procesamiento(df, st.session_state["modelo_seleccionado"])
+            st.write(f"El costo estimado es: ${costo:.4f}")
+            st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Generar Análisis de Sentimientos"):
-                if 'Corregidos' in st.session_state.corregidos_df.columns:
+                with st.spinner("Generando análisis de sentimientos..."):
                     mostrar_analisis_sentimientos(st.session_state.corregidos_df)
-                else:
-                    st.error("No se pudo encontrar la columna 'Corregidos'. Asegúrate de haber procesado los datos correctamente.")
 
         # Expander para el grafo de n-gramas
         with st.expander("Grafo"):
             st.markdown("Genera un grafo basado en los n-gramas para visualizar las relaciones entre las palabras en el texto. Esto puede revelar estructuras y patrones en el uso del lenguaje.")
             n_value = st.number_input("Número de palabras a relacionar en el grafo", min_value=2, value=2, key='n_value_graph')
+            texto_procesado_para_grafo = df['Procesados'].tolist()
+            tokens_entrada = len(' '.join(texto_procesado_para_grafo).split())
+            costo = 0  # No hay costo de API
+            tiempo_estimado = 2  # 2 minutos como tiempo constante estimado
+            st.write(f"El costo estimado es: ${costo:.4f}")
+            st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Generar Grafo"):
-                # Genera el grafo
-                G = ngramas_a_grafo(df['Procesados'].tolist(), n_value)
-                
-                # Dibuja el grafo
-                nx.draw(G, with_labels=True)
-                st.pyplot()
+                with st.spinner("Generando grafo..."):
+                    G = ngramas_a_grafo(texto_procesado_para_grafo, n_value)
+                    nx.draw(G, with_labels=True)
+                    st.pyplot()
 
         # Expander para la generación de temas
         with st.expander("Temas"):
             st.markdown("Genera temas a partir del texto para agrupar los documentos en categorías significativas. Esto es útil para resumir grandes volúmenes de texto y entender mejor el contenido.")
             num_temas = st.number_input("Número de temas a generar:", min_value=1, value=5, step=1, key='num_temas')
+            todas_las_frases = " ".join(df['Corregidos'].tolist())
+            tokens_entrada = len(todas_las_frases.split())
+            tokens_salida = tokens_entrada  # Suponemos que la salida tiene la misma longitud que la entrada
+            costo = calcular_costo(tokens_entrada, tokens_salida, st.session_state["modelo_seleccionado"])
+            tiempo_estimado = estimar_tiempo_procesamiento(df, st.session_state["modelo_seleccionado"])
+            st.write(f"El costo estimado es: ${costo:.4f}")
+            st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Generar Temas"):
-                todas_las_frases = " ".join(df['Corregidos'].tolist())
-                df_temas = generar_temas(todas_las_frases, num_temas, st.session_state.modelo_seleccionado)
-                st.session_state['df_temas'] = df_temas
-                st.dataframe(df_temas)
+                with st.spinner("Generando temas..."):
+                    df_temas = generar_temas(todas_las_frases, num_temas, st.session_state["modelo_seleccionado"])
+                    st.session_state['df_temas'] = df_temas
+                    st.dataframe(df_temas)
 
     else:
         st.write("Por favor, carga y procesa los datos en la pestaña 'Carga de Datos' antes de continuar con el análisis.")
+
 
 
 def export_page():

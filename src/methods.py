@@ -418,7 +418,7 @@ def generate_wordcloud(frases: List[str]):
     texto = ' '.join(frases)
     
     # Crear una nube de palabras con fondo blanco y especificando algunas configuraciones adicionales
-    wordcloud = WordCloud(width=2048, height=1080, background_color='white', colormap='viridis').generate(texto)
+    wordcloud = WordCloud(width=1280, height=720, background_color='white', colormap='viridis').generate(texto)
     
     fig = plt.figure(figsize=(15,8))
     plt.imshow(wordcloud, interpolation='bilinear') # Usar interpolación bilinear para suavizar los bordes de las palabras
@@ -464,6 +464,8 @@ def analisis_sentimientos_transformers(frases):
         })
     return resultados_sentimientos
 
+
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -471,7 +473,9 @@ def mostrar_analisis_sentimientos(df):
     """Muestra el análisis de sentimientos con un gráfico de distribución."""
     resultados_sentimientos = analisis_sentimientos_transformers(df['Corregidos'].tolist())
     
+    # Crear un DataFrame con los resultados y agregar la columna 'Originales'
     df_sentimientos = pd.DataFrame(resultados_sentimientos)
+    df_sentimientos['Originales'] = df['Originales']
     
     # Mostrar el DataFrame en Streamlit
     st.write(df_sentimientos)
@@ -484,6 +488,17 @@ def mostrar_analisis_sentimientos(df):
     plt.ylabel('Frecuencia')
     plt.xticks(rotation=45)
     st.pyplot(plt)
+    
+    # Crear un gráfico de promedio de confiabilidad por sentimiento
+    plt.figure(figsize=(10, 6))
+    promedio_confiabilidad = df_sentimientos.groupby('Sentimiento')['Confiabilidad'].mean().reindex(['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
+    sns.barplot(x=promedio_confiabilidad.index, y=promedio_confiabilidad.values, palette='viridis')
+    plt.title('Promedio de Confiabilidad por Sentimiento')
+    plt.xlabel('Sentimiento')
+    plt.ylabel('Promedio de Confiabilidad')
+    plt.xticks(rotation=45)
+    st.pyplot(plt)
+
 
 
 # Grafo ----------------------------------------------------------------
@@ -594,6 +609,38 @@ def calcular_estadisticas(df):
 
 # src/methods.py
 
+# def calcular_costo(tokens_entrada, tokens_salida, modelo):
+#     precios = {
+#         "gpt-3.5-turbo": {"entrada": 0.0015, "salida": 0.002},
+#         "gpt-3.5-turbo-16k": {"entrada": 0.003, "salida": 0.004},
+#         "gpt-4": {"entrada": 0.03, "salida": 0.06},
+#         "gpt-4-32k": {"entrada": 0.06, "salida": 0.12}
+#     }
+#     costo_entrada = tokens_entrada / 1000 * precios[modelo]["entrada"]
+#     costo_salida = tokens_salida / 1000 * precios[modelo]["salida"]
+#     return costo_entrada + costo_salida
+
+
+# def estimar_tiempo_procesamiento(df, modelo_seleccionado):
+#     tiempo_por_token = 0.05  # 50 ms por token como suposición
+#     total_tokens = df['Originales'].apply(len).sum() / 4  # Aproximación de tokens
+#     tiempo_estimado = total_tokens * tiempo_por_token  # Tiempo en segundos
+
+#     # Ajuste según el modelo
+#     modelo_tiempos = {
+#         "gpt-3.5-turbo": 1,
+#         "gpt-3.5-turbo-16k": 1.5,
+#         "gpt-4": 2,
+#         "gpt-4-32k": 2.5
+#     }
+#     factor_modelo = modelo_tiempos.get(modelo_seleccionado, 1)
+#     tiempo_estimado *= factor_modelo
+
+#     return tiempo_estimado / 60  # Convertir a minutos
+
+
+
+
 def calcular_costo(tokens_entrada, tokens_salida, modelo):
     precios = {
         "gpt-3.5-turbo": {"entrada": 0.0015, "salida": 0.002},
@@ -605,13 +652,11 @@ def calcular_costo(tokens_entrada, tokens_salida, modelo):
     costo_salida = tokens_salida / 1000 * precios[modelo]["salida"]
     return costo_entrada + costo_salida
 
-
 def estimar_tiempo_procesamiento(df, modelo_seleccionado):
     tiempo_por_token = 0.05  # 50 ms por token como suposición
     total_tokens = df['Originales'].apply(len).sum() / 4  # Aproximación de tokens
     tiempo_estimado = total_tokens * tiempo_por_token  # Tiempo en segundos
 
-    # Ajuste según el modelo
     modelo_tiempos = {
         "gpt-3.5-turbo": 1,
         "gpt-3.5-turbo-16k": 1.5,

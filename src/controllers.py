@@ -62,24 +62,32 @@ def preparar_datos_para_analisis(df):
         df['Procesados'] = df['Originales'].apply(preprocesar_texto)
     return df
 
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 def mostrar_analisis_sentimientos(df):
-    
-    # Obtiene los sentimientos y puntuaciones
+    """Muestra el análisis de sentimientos con un gráfico de distribución."""
     resultados_sentimientos = analisis_sentimientos_transformers(df['Corregidos'].tolist())
     
-    # Separa los resultados en dos listas, una para etiquetas y otra para puntuaciones
-    etiquetas = [resultado['Etiqueta'] for resultado in resultados_sentimientos]
-    puntuaciones = [resultado['Puntuación'] for resultado in resultados_sentimientos]
+    # Crear un DataFrame con los resultados
+    df_sentimientos = pd.DataFrame(resultados_sentimientos)
+    df_sentimientos['Originales'] = df['Originales']
     
-    # Crea un DataFrame con los resultados
-    df_sentimientos = pd.DataFrame({
-        'Corregidos': df['Corregidos'],
-        'Etiqueta': etiquetas,
-        'Puntuación': puntuaciones,
-    })
-
-    # Muestra el DataFrame en Streamlit
+    # Reordenar las columnas para que 'Originales' aparezca primero
+    df_sentimientos = df_sentimientos[['Originales', 'Sentimiento', 'Confiabilidad']]
+    
+    # Mostrar el DataFrame en Streamlit
     st.write(df_sentimientos)
+    
+    # Crear un gráfico de la distribución de sentimientos
+    plt.figure(figsize=(10, 6))
+    sns.countplot(data=df_sentimientos, x='Sentimiento', palette='viridis', order=['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
+    plt.title('Distribución de Sentimientos')
+    plt.xlabel('Sentimiento')
+    plt.ylabel('Frecuencia')
+    plt.xticks(rotation=45)
+    st.pyplot(plt)
+
     
     
     
