@@ -130,3 +130,18 @@ def load_and_extract_data(file):
             df.columns = ['Originales'] + df.columns.tolist()[1:]
         return df, None
     return None, "No file uploaded"
+
+
+def generar_prompt_con_contexto(frase: str, sensibilidad: str, contexto: dict) -> str:
+    """
+    Genera un prompt que incluye el contexto del proyecto para una corrección de frase específica.
+    """
+    comando = comandos.get(sensibilidad, "")
+    contexto_str = f"Nombre del proyecto: {contexto['proyecto_nombre']}\nDescripción del proyecto: {contexto['proyecto_descripcion']}\nPalabras clave: {', '.join(contexto['palabras_clave'])}\nNotas adicionales: {contexto['notas_adicionales']}\n"
+    prompt = f"{contexto_str}\nRealiza una corrección de nivel {sensibilidad} entre Ninguna, Leve, Moderado y Exhaustivo. Siguiendo estas instrucciones: {comando} \nFrase a corregir: '{frase}'. \nPresenta SOLAMENTE el texto corregido, no añadas respuesta, texto o símbolos a la respuesta, tampoco el punto final."
+    return prompt
+
+
+
+
+

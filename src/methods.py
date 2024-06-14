@@ -44,26 +44,15 @@ def sensibilidad_a_comando(sensibilidad: str) -> str:
     """Convierte el nivel de sensibilidad en un comando específico para el modelo."""
     return comandos.get(sensibilidad, "No se realizará ninguna corrección.")
 
-def corregir_y_procesar_datos(df, sensibilidad, modelo_seleccionado):
+def corregir_y_procesar_datos(df: pd.DataFrame, sensibilidad: str, modelo_seleccionado: str, contexto: dict) -> pd.DataFrame:
     """
-    Corrige y preprocesa los datos del DataFrame.
-    
-    Args:
-    - df: DataFrame original con la columna 'Originales'.
-    - sensibilidad: Nivel de sensibilidad para la corrección.
-    - modelo_seleccionado: Modelo de AI seleccionado para la corrección.
-    
-    Returns:
-    - DataFrame con columnas 'Originales', 'Corregidos' y 'Procesados'.
+    Aplica la corrección y el preprocesamiento a todas las frases en el DataFrame,
+    utilizando el contexto del proyecto.
     """
-    if sensibilidad == "Ninguna":
-        df['Corregidos'] = df['Originales']
-    else:
-        df['Corregidos'] = df['Originales'].apply(
-            lambda frase: corregir_frase(frase, sensibilidad, modelo_seleccionado)
-        )
+    df['Corregidos'] = df['Originales'].apply(lambda frase: corregir_frase(frase, sensibilidad, modelo_seleccionado, contexto))
     df['Procesados'] = df['Corregidos'].apply(preprocesar_texto)
     return df
+
 
 def visualizar_datos(df):
     """
@@ -230,24 +219,25 @@ def normalizar_texto(texto: str) -> str:
     texto = re.sub(r'\s+', ' ', texto).strip()  # Eliminar espacios extras
     return texto
 
-def corregir_frase(frase: str, sensibilidad: str, modelo_seleccionado) -> str:
+def corregir_frase(frase: str, sensibilidad: str, modelo_seleccionado: str, contexto: dict) -> str:
     """
-    Función que corrige individualmente cada frase de acuerdo al nivel de sensibilidad.
-    Si la sensibilidad es "Ninguna", devuelve la frase sin cambios.
+    Función que corrige individualmente cada frase de acuerdo al nivel de sensibilidad,
+    utilizando el contexto del proyecto.
     """
     if sensibilidad == "Ninguna":
-        return frase  # Función identidad para nivel "Ninguna"
-    
-    # Generar el prompt de corrección
-    prompt_correccion = generar_prompt_correccion(frase, sensibilidad)
-    
+        return frase  # No se realiza corrección
+
+    # Generar el prompt de corrección con contexto
+    prompt_correccion = generar_prompt_con_contexto(frase, sensibilidad, contexto)
+
     respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt_correccion)
-    # Normalización a minúsculas y verificación de la corrección
+    # Normalización a minúsculas y verificación de la corrección (implementar según lo discutido anteriormente)
     respuesta_corregida = normalizar_texto(respuesta_corregida)
     if es_correccion_valida(frase, respuesta_corregida):
         return respuesta_corregida
     else:
         return normalizar_texto(frase)
+
 
 def es_correccion_valida(original: str, corregido: str) -> bool:
     """
@@ -503,21 +493,89 @@ def mostrar_analisis_sentimientos(df):
 
 # Grafo ----------------------------------------------------------------
 
-def ngramas_a_grafo(frases_procesadas, n):
+import networkx as nx
+from collections import Counter
+from nltk.util import ngrams
+
+def ngramas_a_grafo(frases_procesadas, n, min_weight=1):
     """Genera un grafo a partir de los n-gramas de las frases procesadas."""
-    # Calcula los n-gramas
-    ngramas_resultado = calculate_top_n_grams(frases_procesadas, n)
+    tokens = [token for frase in frases_procesadas for token in frase.split()]
+    n_grams = list(ngrams(tokens, n))
+    n_grams_counts = Counter(n_grams)
     
-    # Crea un grafo vacío
     G = nx.Graph()
     
-    # Añade los n-gramas al grafo
-    for ngrama, frecuencia in ngramas_resultado:
-        # Añade los nodos y las aristas con la frecuencia como peso
-        G.add_edge(*ngrama, weight=frecuencia)
+    for ngrama, frecuencia in n_grams_counts.items():
+        if frecuencia >= min_weight:  # Filtrar por frecuencia
+            if len(ngrama) == n:
+                for i in range(len(ngrama) - 1):
+                    G.add_edge(ngrama[i], ngrama[i + 1], weight=frecuencia)
     
     return G
 
+
+
+
+
+import openpyxl
+from openpyxl.drawing.image import Image
+import io
+
+def exportar_resultados(seleccionados):
+    # Crear un objeto de Excel
+    with pd.ExcelWriter("Resultados_Exportados.xlsx", engine='openpyxl') as writer:
+        # Exportar Datos Originales y Corregidos
+        if "Datos Originales y Corregidos" in seleccionados and "df" in st.session_state:
+            st.session_state["df"].to_excel(writer, sheet_name="Originales y Corregidos", index=False)
+
+        # Exportar Datos Procesados
+        if "Datos Procesados" in seleccionados and "corregidos_df" in st.session_state:
+            st.session_state["corregidos_df"].to_excel(writer, sheet_name="Procesados", index=False)
+
+        # Exportar Análisis de Sentimientos
+        if "Análisis de Sentimientos" in seleccionados and "corregidos_df" in st.session_state:
+            df_sentimientos = pd.DataFrame(analisis_sentimientos_transformers(st.session_state["corregidos_df"]['Corregidos'].tolist()))
+            df_sentimientos['Originales'] = st.session_state["corregidos_df"]['Originales']
+            df_sentimientos = df_sentimientos[['Originales', 'Sentimiento', 'Confiabilidad']]
+            df_sentimientos.to_excel(writer, sheet_name="Sentimientos", index=False)
+
+        # Exportar N-Gramas
+        if "N-Gramas" in seleccionados and "corregidos_df" in st.session_state:
+            texto_procesado_para_ngramas = st.session_state["corregidos_df"]['Procesados'].tolist()
+            ngramas_resultado = calculate_top_n_grams(texto_procesado_para_ngramas, n_value=2, top_n=20)
+            df_ngramas = ngramas_a_dataframe(ngramas_resultado)
+            df_ngramas.to_excel(writer, sheet_name="N-Gramas", index=False)
+
+        # Exportar Nube de Palabras y Gráfico de Sentimientos
+        workbook = writer.book
+        if "Nube de Palabras" in seleccionados or "Gráfico de Sentimientos" in seleccionados:
+            imgdata = io.BytesIO()
+            
+            # Nube de Palabras
+            if "Nube de Palabras" in seleccionados and "corregidos_df" in st.session_state:
+                fig = generate_wordcloud([st.session_state["corregidos_df"]['Procesados'].tolist()])
+                fig.savefig(imgdata, format='png')
+                imgdata.seek(0)
+                img = Image(imgdata)
+                worksheet = workbook.create_sheet("Nube de Palabras")
+                worksheet.add_image(img, 'A1')
+
+            # Gráfico de Sentimientos
+            if "Gráfico de Sentimientos" in seleccionados and "corregidos_df" in st.session_state:
+                fig = plt.figure(figsize=(10, 6))
+                df_sentimientos = pd.DataFrame(analisis_sentimientos_transformers(st.session_state["corregidos_df"]['Corregidos'].tolist()))
+                sns.countplot(data=df_sentimientos, x='Sentimiento', palette='viridis', order=['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
+                plt.title('Distribución de Sentimientos')
+                plt.xlabel('Sentimiento')
+                plt.ylabel('Frecuencia')
+                plt.xticks(rotation=45)
+                fig.savefig(imgdata, format='png')
+                imgdata.seek(0)
+                img = Image(imgdata)
+                worksheet = workbook.create_sheet("Gráfico de Sentimientos")
+                worksheet.add_image(img, 'A1')
+
+        writer.save()
 
 ###################################################################
 ####################### Exportar datos ############################
