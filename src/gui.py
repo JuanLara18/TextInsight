@@ -270,22 +270,30 @@ def export_page():
     opciones_exportacion = []
     if "df" in st.session_state:
         opciones_exportacion.append("Datos Originales y Corregidos")
-    if "corregidos_df" in st.session_state and "Procesados" in st.session_state["corregidos_df"].columns:
-        opciones_exportacion.append("Datos Procesados")
+    if "corregidos_df" in st.session_state and st.session_state.corregidos_df is not None:
+        if "Procesados" in st.session_state.corregidos_df.columns:
+            opciones_exportacion.append("Datos Procesados")
         opciones_exportacion.append("Análisis de Sentimientos")
         opciones_exportacion.append("N-Gramas")
         opciones_exportacion.append("Nube de Palabras")
         opciones_exportacion.append("Gráfico de Sentimientos")
 
+    if not opciones_exportacion:
+        st.info("No hay datos disponibles para exportar. Por favor, asegúrate de cargar y procesar los datos antes de intentar exportar.")
+        return
+
     seleccionados = st.multiselect("Elige qué deseas exportar:", opciones_exportacion)
     
     if st.button("Exportar"):
         with st.spinner("Exportando..."):
-            exportar_resultados(seleccionados)
-        st.success("Exportación completada.")
+            try:
+                exportar_resultados(seleccionados)
+                st.success("Exportación completada.")
+            except Exception as e:
+                st.error(f"Error al exportar resultados: {e}")
 
 def run_app():
-    page = st.sidebar.radio("Navegación", ["Inicio", "Marco del proyecto", "Taller de Datos","Análisis de datos", "Exportar resultados"])
+    page = st.sidebar.radio("Navegación", ["Inicio", "Marco del proyecto", "Taller de Datos", "Análisis de datos", "Exportar resultados"])
 
     if page == "Inicio":
         welcome_page()
