@@ -62,6 +62,8 @@ def preparar_datos_para_analisis(df):
         df['Procesados'] = df['Originales'].apply(preprocesar_texto)
     return df
 
+
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 

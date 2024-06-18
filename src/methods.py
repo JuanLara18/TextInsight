@@ -1,57 +1,34 @@
 # src/methods.py
 
+# Importaciones de bibliotecas estándar
+import re
+import io
+import unicodedata
+from collections import Counter
+from typing import List
+
+# Importaciones de bibliotecas externas
 import matplotlib.pyplot as plt
 import pandas as pd
-import unicodedata
-import re
 import spacy
 import Levenshtein as lev
 import streamlit as st
 import numpy as np
 import networkx as nx
-
-from typing import List
-
 from nltk.util import ngrams
-from collections import Counter
 from wordcloud import WordCloud
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
-
 from transformers import pipeline
+import seaborn as sns
+from openpyxl.drawing.image import Image
 
-from src.connection import generar_respuesta 
+# Importaciones de módulos internos
+from .connection import generar_respuesta
 
 # Inicialización de spaCy para el procesamiento de texto en español
 nlp = spacy.load('es_core_news_sm')
 nlp_sentimientos = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
-
-# src/methods.py
-
-comandos = {
-    "Ninguna": "No se realizará ninguna corrección.",
-    "Leve": "Corrige únicamente errores ortográficos evidentes, como errores tipográficos o palabras mal escritas que alteren significativamente la comprensión del texto.",
-    "Moderado": "Corrige ortografía, gramática y puntuación para que el texto esté correctamente estructurado según las reglas estándar del idioma.",
-    "Exhaustivo": "Realiza una corrección exhaustiva incluyendo ortografía, gramática, estilo y claridad, y realiza mejoras sustanciales para optimizar la expresión y el impacto del texto."
-}
-
-def generar_prompt_correccion(frase: str, nivel_sensibilidad: str) -> str:
-    comando = comandos.get(nivel_sensibilidad, "")
-    prompt = f"Realiza una corrección {nivel_sensibilidad.lower()} siguiendo estas instrucciones: {comando} \n Frase a corregir: '{frase}'. \n Presenta SOLAMENTE el texto corregido, no añadas respuesta, texto o símbolos a la respuesta, tampoco el punto final."
-    return prompt
-
-def sensibilidad_a_comando(sensibilidad: str) -> str:
-    """Convierte el nivel de sensibilidad en un comando específico para el modelo."""
-    return comandos.get(sensibilidad, "No se realizará ninguna corrección.")
-
-def corregir_y_procesar_datos(df: pd.DataFrame, sensibilidad: str, modelo_seleccionado: str, contexto: dict) -> pd.DataFrame:
-    """
-    Aplica la corrección y el preprocesamiento a todas las frases en el DataFrame,
-    utilizando el contexto del proyecto.
-    """
-    df['Corregidos'] = df['Originales'].apply(lambda frase: corregir_frase(frase, sensibilidad, modelo_seleccionado, contexto))
-    df['Procesados'] = df['Corregidos'].apply(preprocesar_texto)
-    return df
 
 
 def visualizar_datos(df):
@@ -63,11 +40,68 @@ def visualizar_datos(df):
     """
     st.write(df)
 
-
-
 ###################################################################
 ####################### Taller de datos ###########################
 ###################################################################
+
+# Carga y preparación de los datos ------------------------------------
+
+def load_and_extract_data(file):
+    """
+    Carga datos desde un archivo subido y extrae el texto necesario.
+    Soporta diferentes formatos de archivo como .csv, .xlsx, y .txt.
+    Los archivos .sav están pendientes de implementación.
+    
+    Args:
+    - file: Archivo subido por el usuario.
+    
+    Returns:
+    - DataFrame con columnas 'Originales' y 'Corregidos' o None si el tipo de archivo no es soportado.
+    """
+    if file is not None:
+        # Determinar el formato del archivo y cargarlo adecuadamente
+        if file.name.endswith('.csv'):
+            df = pd.read_csv(file)
+        elif file.name.endswith('.xlsx'):
+            df = pd.read_excel(file)
+        elif file.name.endswith('.sav'):
+            # Implementación pendiente para archivos .sav
+            pass
+        elif file.name.endswith('.txt'):
+            # Para archivos .txt, tratar cada línea como una entrada separada
+            content = file.getvalue().decode("utf-8")
+            lines = content.splitlines()
+            df = pd.DataFrame(lines, columns=['Originales'])
+        else:
+            # Retornar None si el tipo de archivo no es soportado
+            return None, "Unsupported file type"
+
+        # Asegurar que la primera columna se trate como 'Originales' para archivos no .txt
+        if not file.name.endswith('.txt'):
+            df.columns = ['Originales'] + df.columns.tolist()[1:]
+        return df
+    return None
+
+def preparar_datos_para_analisis(df):
+    """
+    Aplica preprocesamiento a las frases corregidas en el DataFrame.
+    El texto procesado se utiliza para análisis pero no se añade como columna al DataFrame para evitar redundancia.
+    
+    Args:
+    - df: DataFrame con las frases corregidas.
+    
+    Returns:
+    - DataFrame original con una columna adicional 'Texto Procesado'.
+    """
+    # Preprocesar texto corregido para análisis
+    if 'Corregidos' in df.columns:
+        df['Procesados'] = df['Corregidos'].apply(preprocesar_texto)
+    else:
+        # Si la columna 'Corregidos' no existe, puedes optar por aplicar el procesamiento a otra columna
+        # Por ejemplo, aplicar a 'Originales' o manejar de otra manera.
+        df['Procesados'] = df['Originales'].apply(preprocesar_texto)
+    return df
+
 
 # Preprocesamiento ---------------------------------------------------
 
@@ -96,110 +130,6 @@ def remove_punctuation(words: List[str]) -> List[str]:
     return [re.sub(r'[^\w\s]', '', word) for word in words if re.sub(r'[^\w\s]', '', word) != '']
 
 # Corrección -----------------------------------------------------------
-
-# def generar_prompt_correccion(frase: str, nivel_sensibilidad: int) -> str:
-   
-#     comando = comandos.get(nivel_sensibilidad, "")
-#     prompt = f"Realiza una corrección de nivel {nivel_sensibilidad} entre 0 y 10 donde 0 es no hacerle nada a la frase y 10 es la correción perfecta. Siguiendo estas instrucciones: {comando} \n Frase a corregir: '{frase}'. \n Presenta SOLAMENTE el texto corregido, no añadas respuesta, texto o símbolos a la respuesta, tampoco el punto final."
-#     return prompt
-
-# def sensibilidad_a_comando(sensibilidad: int) -> str:
-#     """Convierte el nivel de sensibilidad en un comando específico para el modelo."""
-#     return comandos.get(sensibilidad, "Realizar una corrección moderada.")
-
-# def obtener_descripcion_sensibilidad(n):
-#     return comandos[n]
-
-# def normalizar_texto(texto: str) -> str:
-#     """
-#     Normaliza el texto convirtiendo todo a minúsculas y eliminando espacios extras.
-#     """
-#     texto = texto.lower()  # Convertir a minúsculas
-#     texto = re.sub(r'\s+', ' ', texto).strip()  # Eliminar espacios extras
-#     return texto
-
-# def corregir_frase(frase: str, sensibilidad: int, modelo_seleccionado) -> str:
-#     """
-#     Función que corrige individualmente cada frase de acuerdo al nivel de sensibilidad.
-#     Si la sensibilidad es 0, devuelve la frase sin cambios.
-#     """
-#     if sensibilidad == 0:
-#         return frase  # Función identidad para nivel 0
-    
-#     # Generar el prompt de corrección
-#     prompt_correccion = generar_prompt_correccion(frase, sensibilidad)
-    
-#     respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt_correccion)
-#     # Normalización a minúsculas y verificación de la corrección (implementar según lo discutido anteriormente)
-#     respuesta_corregida = normalizar_texto(respuesta_corregida)
-#     if es_correccion_valida(frase, respuesta_corregida):
-#         return respuesta_corregida
-#     else:
-#         return normalizar_texto(frase)
-
-# def es_correccion_valida(original: str, corregido: str) -> bool:
-#     """
-#     Verifica si la corrección es válida, es decir, si no agrega elementos innecesarios y corrige de forma apropiada.
-#     """
-#     original_norm = normalizar_texto(original)
-#     corregido_norm = normalizar_texto(corregido)
-
-#     # Comprueba si se han realizado correcciones ortográficas y gramaticales sin añadir elementos adicionales
-#     if corregido_norm == original_norm or '->' in corregido_norm:
-#         return False
-#     # Permite correcciones específicas como "q" por "que"
-#     corregido_norm = corregido_norm.replace(" q ", " que ")
-#     # Otras correcciones específicas podrían agregarse aquí
-#     # ...
-
-#     # Comparar la frase original y la corregida para validar la corrección
-#     return corregido_norm != original_norm
-
-# def corregir_y_validar_frase(frase: str, sensibilidad: int, modelo_seleccionado) -> str:
-#     """
-#     Corrige una frase, la valida y la normaliza.
-#     """
-#     comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
-#     respuesta_corregida = corregir_frase(frase, comando_sensibilidad, modelo_seleccionado)
-    
-#     # Si la corrección no es válida, se devuelve la frase original normalizada
-#     return respuesta_corregida if es_correccion_valida(frase, respuesta_corregida) else normalizar_texto(frase)
-
-# def corregir_frases(frases: List[str], sensibilidad: int) -> List[str]:
-#     """Aplica corrección a cada frase en la lista basado en la sensibilidad."""
-#     # Convertimos el nivel de sensibilidad a un comando entendible para el modelo
-#     comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
-    
-#     # Asegúrate de pasar el comando de sensibilidad a la función corregir_frase
-#     return [corregir_frase(frase, comando_sensibilidad) for frase in frases]
-
-# def corregir_frases_por_lote(frases: List[str], sensibilidad: int, tamaño_lote=5, modelo_seleccionado="gpt-3.5-turbo") -> List[str]:
-#     """Aplica la corrección a cada frase en la lista en lotes."""
-#     # Convertimos el nivel de sensibilidad a un comando entendible para el modelo
-#     comando_sensibilidad = sensibilidad_a_comando(sensibilidad)
-    
-#     # Crea una lista para almacenar las frases corregidas
-#     frases_corregidas = []
-    
-#     # Divide las frases en lotes
-#     for i in range(0, len(frases), tamaño_lote):
-#         lote = frases[i:i+tamaño_lote]
-        
-#         # Crea un prompt de lote con todas las frases en el lote
-#         lote_prompt = ' '.join([f"{comando_sensibilidad} Corrige la siguiente frase: {frase}" for frase in lote])
-        
-#         # Obtiene la respuesta del modelo para el lote
-#         respuesta_lote = generar_respuesta(modelo_seleccionado, lote_prompt)
-        
-#         # Divide la respuesta del lote en frases individuales y las añade a la lista de frases corregidas
-#         frases_corregidas.extend(respuesta_lote.split('\n'))
-    
-#     return frases_corregidas
-
-import re
-from typing import List
-import unicodedata
-from .connection import generar_respuesta
 
 comandos = {
     "Ninguna": "No se realizará ninguna corrección.",
@@ -237,7 +167,6 @@ def corregir_frase(frase: str, sensibilidad: str, modelo_seleccionado: str, cont
         return respuesta_corregida
     else:
         return normalizar_texto(frase)
-
 
 def es_correccion_valida(original: str, corregido: str) -> bool:
     """
@@ -293,6 +222,25 @@ def corregir_frases_por_lote(frases: List[str], sensibilidad: str, tamaño_lote=
             frases_corregidas.extend(respuesta_lote.split('\n'))
     
     return frases_corregidas
+
+def generar_prompt_correccion(frase: str, nivel_sensibilidad: str) -> str:
+    comando = comandos.get(nivel_sensibilidad, "")
+    prompt = f"Realiza una corrección {nivel_sensibilidad.lower()} siguiendo estas instrucciones: {comando} \n Frase a corregir: '{frase}'. \n Presenta SOLAMENTE el texto corregido, no añadas respuesta, texto o símbolos a la respuesta, tampoco el punto final."
+    return prompt
+
+def sensibilidad_a_comando(sensibilidad: str) -> str:
+    """Convierte el nivel de sensibilidad en un comando específico para el modelo."""
+    return comandos.get(sensibilidad, "No se realizará ninguna corrección.")
+
+def corregir_y_procesar_datos(df: pd.DataFrame, sensibilidad: str, modelo_seleccionado: str, contexto: dict) -> pd.DataFrame:
+    """
+    Aplica la corrección y el preprocesamiento a todas las frases en el DataFrame,
+    utilizando el contexto del proyecto.
+    """
+    df['Corregidos'] = df['Originales'].apply(lambda frase: corregir_frase(frase, sensibilidad, modelo_seleccionado, contexto))
+    df['Procesados'] = df['Corregidos'].apply(preprocesar_texto)
+    return df
+
 
 # Distancias -----------------------------------------------------------
 
@@ -454,11 +402,6 @@ def analisis_sentimientos_transformers(frases):
         })
     return resultados_sentimientos
 
-
-
-import matplotlib.pyplot as plt
-import seaborn as sns
-
 def mostrar_analisis_sentimientos(df):
     """Muestra el análisis de sentimientos con un gráfico de distribución."""
     resultados_sentimientos = analisis_sentimientos_transformers(df['Corregidos'].tolist())
@@ -490,12 +433,7 @@ def mostrar_analisis_sentimientos(df):
     st.pyplot(plt)
 
 
-
 # Grafo ----------------------------------------------------------------
-
-import networkx as nx
-from collections import Counter
-from nltk.util import ngrams
 
 def ngramas_a_grafo(frases_procesadas, n, min_weight=1):
     """Genera un grafo a partir de los n-gramas de las frases procesadas."""
@@ -513,13 +451,9 @@ def ngramas_a_grafo(frases_procesadas, n, min_weight=1):
     
     return G
 
-
-
-
-
-import openpyxl
-from openpyxl.drawing.image import Image
-import io
+###################################################################
+####################### Exportar datos ############################
+###################################################################
 
 def exportar_resultados(seleccionados):
     # Crear un objeto de Excel
@@ -577,10 +511,6 @@ def exportar_resultados(seleccionados):
 
         writer.save()
 
-###################################################################
-####################### Exportar datos ############################
-###################################################################
-
 def extract_project_info_from_file(file_content: str) -> dict:
     """
     Extrae la información del proyecto desde el contenido de un archivo de texto.
@@ -612,36 +542,9 @@ def extract_project_info_from_file(file_content: str) -> dict:
     
     return info
 
-# def corregir_y_procesar_datos(df, sensibilidad, modelo_seleccionado):
-#     """
-#     Corrige y preprocesa los datos del DataFrame.
-    
-#     Args:
-#     - df: DataFrame original con la columna 'Originales'.
-#     - sensibilidad: Nivel de sensibilidad para la corrección.
-#     - modelo_seleccionado: Modelo de AI seleccionado para la corrección.
-    
-#     Returns:
-#     - DataFrame con columnas 'Originales', 'Corregidos' y 'Procesados'.
-#     """
-#     df['Corregidos'] = df['Originales'].apply(
-#         lambda frase: corregir_frase(frase, sensibilidad, modelo_seleccionado)
-#     )
-#     df['Procesados'] = df['Corregidos'].apply(preprocesar_texto)
-#     return df
-
-# def visualizar_datos(df):
-#     """
-#     Muestra un DataFrame en Streamlit.
-    
-#     Args:
-#     - df: DataFrame a mostrar.
-#     """
-#     st.write(df)
-
-# src/methods.py
-
-import numpy as np
+###################################################################
+########################## COSTOS #################################
+###################################################################
 
 def calcular_estadisticas(df):
     """
@@ -663,41 +566,6 @@ def calcular_estadisticas(df):
         }
     
     return pd.DataFrame(estadisticas).transpose()
-
-
-# src/methods.py
-
-# def calcular_costo(tokens_entrada, tokens_salida, modelo):
-#     precios = {
-#         "gpt-3.5-turbo": {"entrada": 0.0015, "salida": 0.002},
-#         "gpt-3.5-turbo-16k": {"entrada": 0.003, "salida": 0.004},
-#         "gpt-4": {"entrada": 0.03, "salida": 0.06},
-#         "gpt-4-32k": {"entrada": 0.06, "salida": 0.12}
-#     }
-#     costo_entrada = tokens_entrada / 1000 * precios[modelo]["entrada"]
-#     costo_salida = tokens_salida / 1000 * precios[modelo]["salida"]
-#     return costo_entrada + costo_salida
-
-
-# def estimar_tiempo_procesamiento(df, modelo_seleccionado):
-#     tiempo_por_token = 0.05  # 50 ms por token como suposición
-#     total_tokens = df['Originales'].apply(len).sum() / 4  # Aproximación de tokens
-#     tiempo_estimado = total_tokens * tiempo_por_token  # Tiempo en segundos
-
-#     # Ajuste según el modelo
-#     modelo_tiempos = {
-#         "gpt-3.5-turbo": 1,
-#         "gpt-3.5-turbo-16k": 1.5,
-#         "gpt-4": 2,
-#         "gpt-4-32k": 2.5
-#     }
-#     factor_modelo = modelo_tiempos.get(modelo_seleccionado, 1)
-#     tiempo_estimado *= factor_modelo
-
-#     return tiempo_estimado / 60  # Convertir a minutos
-
-
-
 
 def calcular_costo(tokens_entrada, tokens_salida, modelo):
     precios = {

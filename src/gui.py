@@ -1,6 +1,5 @@
 # src/gui.py
 import streamlit as st
-import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
 
@@ -8,7 +7,6 @@ from .controllers import load_and_extract_data, mostrar_analisis_sentimientos
 from .methods import (
     calcular_costo,
     calculate_top_n_grams,
-    corregir_frase,
     corregir_y_procesar_datos,
     estimar_tiempo_procesamiento,
     exportar_resultados,
@@ -16,7 +14,6 @@ from .methods import (
     ngramas_a_dataframe, generar_temas,
     ngramas_a_grafo,
     obtener_descripcion_sensibilidad,
-    preprocesar_texto,
     show_analysis,
     visualizar_datos
 )
@@ -269,10 +266,6 @@ def analysis_page():
 
     else:
         st.write("Por favor, carga y procesa los datos en la pestaña 'Taller de Datos' antes de continuar con el análisis.")
-
-
-
-import pandas as pd
 
 def export_page():
     st.title("Exportar Resultados")
