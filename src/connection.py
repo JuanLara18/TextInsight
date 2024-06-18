@@ -1,10 +1,11 @@
 # src/connection.py
 
 import openai
-import matplotlib.pyplot as plt
-import pandas as pd
 import os
+import pandas as pd
 from dotenv import load_dotenv
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Cargar variables de entorno desde el archivo 'src/openai_api.env' para mayor seguridad
 load_dotenv('src/openai_api.env')
@@ -17,7 +18,6 @@ if not api_key:
 
 # Configurar la clave API de OpenAI para su uso en las solicitudes
 openai.api_key = api_key
-
 
 def generar_respuesta(modelo_seleccionado, prompt, max_tokens=1000):
     """
@@ -106,3 +106,40 @@ def generar_grafico_comparativo():
     
     plt.tight_layout()
     return plt
+
+def generar_grafico_sentimientos(df):
+    """
+    Genera un gráfico de la distribución de sentimientos a partir del DataFrame proporcionado.
+
+    Args:
+        df (pd.DataFrame): DataFrame que contiene los datos procesados.
+
+    Returns:
+        matplotlib.figure.Figure: Figura de Matplotlib con el gráfico generado.
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.countplot(data=df, x='Sentimiento', palette='viridis', order=['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'], ax=ax)
+    ax.set_title('Distribución de Sentimientos')
+    ax.set_xlabel('Sentimiento')
+    ax.set_ylabel('Frecuencia')
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+    return fig
+
+def generar_grafico_confiabilidad(df):
+    """
+    Genera un gráfico de promedio de confiabilidad por sentimiento a partir del DataFrame proporcionado.
+
+    Args:
+        df (pd.DataFrame): DataFrame que contiene los datos procesados.
+
+    Returns:
+        matplotlib.figure.Figure: Figura de Matplotlib con el gráfico generado.
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+    promedio_confiabilidad = df.groupby('Sentimiento')['Confiabilidad'].mean().reindex(['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
+    sns.barplot(x=promedio_confiabilidad.index, y=promedio_confiabilidad.values, palette='viridis', ax=ax)
+    ax.set_title('Promedio de Confiabilidad por Sentimiento')
+    ax.set_xlabel('Sentimiento')
+    ax.set_ylabel('Promedio de Confiabilidad')
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+    return fig
