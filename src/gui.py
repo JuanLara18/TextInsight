@@ -285,7 +285,7 @@ def export_page():
         st.success("Exportación completada.")
 
 def run_app():
-    page = st.sidebar.radio("Navegación", ["Inicio", "Marco del proyecto", "Taller de Datos","Análisis de datos", "Exportar resultados"])
+    page = st.sidebar.radio("Navegación", ["Inicio", "Marco del proyecto", "Taller de Datos", "Análisis de datos", "Exportar resultados"])
 
     if page == "Inicio":
         welcome_page()
