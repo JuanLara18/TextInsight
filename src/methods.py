@@ -71,6 +71,42 @@ def load_and_extract_data(file):
     - DataFrame con columnas 'Originales' y 'Corregidos' o None si el tipo de archivo no es soportado.
     """
     if file is not None:
+        try:
+            if file.name.endswith('.csv'):
+                df = pd.read_csv(file)
+            elif file.name.endswith('.xlsx'):
+                df = pd.read_excel(file)
+            elif file.name.endswith('.sav'):
+                # Implementación pendiente para archivos .sav
+                return None, "Unsupported file type"
+            elif file.name.endswith('.txt'):
+                # Para archivos .txt, tratar cada línea como una entrada separada
+                content = file.getvalue().decode("utf-8")
+                lines = content.splitlines()
+                df = pd.DataFrame(lines, columns=['Originales'])
+            else:
+                # Retornar None si el tipo de archivo no es soportado
+                return None, "Unsupported file type"
+
+            # Asegurar que la primera columna se trate como 'Originales' para archivos no .txt
+            if not file.name.endswith('.txt'):
+                df.columns = ['Originales'] + df.columns.tolist()[1:]
+            return df, None
+        except Exception as e:
+            return None, f"Error loading file: {e}"
+    return None, "No file uploaded"
+    """
+    Carga datos desde un archivo subido y extrae el texto necesario.
+    Soporta diferentes formatos de archivo como .csv, .xlsx, y .txt.
+    Los archivos .sav están pendientes de implementación.
+    
+    Args:
+    - file: Archivo subido por el usuario.
+    
+    Returns:
+    - DataFrame con columnas 'Originales' y 'Corregidos' o None si el tipo de archivo no es soportado.
+    """
+    if file is not None:
         # Determinar el formato del archivo y cargarlo adecuadamente
         if file.name.endswith('.csv'):
             df = pd.read_csv(file)
