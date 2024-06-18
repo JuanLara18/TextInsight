@@ -513,7 +513,7 @@ def exportar_resultados(seleccionados):
         # Exportar N-Gramas
         if "N-Gramas" in seleccionados and "corregidos_df" in st.session_state:
             texto_procesado_para_ngramas = st.session_state["corregidos_df"]['Procesados'].tolist()
-            ngramas_resultado = calculate_top_n_grams(texto_procesado_para_ngramas, n_value=2, top_n=20)
+            ngramas_resultado = calculate_top_n_grams(texto_procesado_para_ngramas, n=2, top_n=20)
             df_ngramas = ngramas_a_dataframe(ngramas_resultado)
             df_ngramas.to_excel(writer, sheet_name="N-Gramas", index=False)
 
@@ -524,7 +524,7 @@ def exportar_resultados(seleccionados):
             
             # Nube de Palabras
             if "Nube de Palabras" in seleccionados and "corregidos_df" in st.session_state:
-                fig = generate_wordcloud([st.session_state["corregidos_df"]['Procesados'].tolist()])
+                fig = generate_wordcloud(st.session_state["corregidos_df"]['Procesados'].tolist())
                 fig.savefig(imgdata, format='png')
                 imgdata.seek(0)
                 img = Image(imgdata)
@@ -533,13 +533,7 @@ def exportar_resultados(seleccionados):
 
             # Gráfico de Sentimientos
             if "Gráfico de Sentimientos" in seleccionados and "corregidos_df" in st.session_state:
-                fig = plt.figure(figsize=(10, 6))
-                df_sentimientos = pd.DataFrame(analisis_sentimientos_transformers(st.session_state["corregidos_df"]['Corregidos'].tolist()))
-                sns.countplot(data=df_sentimientos, x='Sentimiento', palette='viridis', order=['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
-                plt.title('Distribución de Sentimientos')
-                plt.xlabel('Sentimiento')
-                plt.ylabel('Frecuencia')
-                plt.xticks(rotation=45)
+                fig = generar_grafico_sentimientos(st.session_state["corregidos_df"])
                 fig.savefig(imgdata, format='png')
                 imgdata.seek(0)
                 img = Image(imgdata)

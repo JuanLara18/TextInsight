@@ -1,7 +1,6 @@
 # src/gui.py
 import streamlit as st
 
-from .controllers import load_and_extract_data, mostrar_analisis_sentimientos
 from .methods import (
     calcular_costo,
     calculate_top_n_grams,
@@ -15,7 +14,9 @@ from .methods import (
     show_analysis,
     visualizar_datos,
     generar_grafico_sentimientos,
-    generar_grafico_confiabilidad
+    generar_grafico_confiabilidad,
+    load_and_extract_data, 
+    mostrar_analisis_sentimientos
 )
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
 
