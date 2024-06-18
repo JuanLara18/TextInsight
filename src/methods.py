@@ -28,17 +28,13 @@ from .connection import generar_respuesta
 from src.controllers import generar_prompt_con_contexto
 
 # Inicialización de spaCy para el procesamiento de texto en español
+nlp = spacy.load('es_core_news_sm')
 
-import transformers
-import torch
-# nlp_sentimientos = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
 def get_sentiment_pipeline():
     try:
-        return transformers.pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
+        return pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
     except Exception as e:
         raise RuntimeError(f"Error loading the sentiment analysis model: {e}")
-
-nlp_sentimientos = get_sentiment_pipeline()
 
 def visualizar_datos(df):
     """
