@@ -28,9 +28,17 @@ from .connection import generar_respuesta
 from src.controllers import generar_prompt_con_contexto
 
 # Inicialización de spaCy para el procesamiento de texto en español
-nlp = spacy.load('es_core_news_sm')
-nlp_sentimientos = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
 
+import transformers
+import torch
+# nlp_sentimientos = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
+def get_sentiment_pipeline():
+    try:
+        return transformers.pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
+    except Exception as e:
+        raise RuntimeError(f"Error loading the sentiment analysis model: {e}")
+
+nlp_sentimientos = get_sentiment_pipeline()
 
 def visualizar_datos(df):
     """
@@ -387,6 +395,7 @@ def generar_temas(texto: str, n_temas: int, modelo: str) -> pd.DataFrame:
 
 def analisis_sentimientos_transformers(frases):
     """Aplica análisis de sentimientos utilizando la biblioteca transformers."""
+    nlp_sentimientos = get_sentiment_pipeline()
     resultados_sentimientos = []
     for frase in frases:
         resultado = nlp_sentimientos(frase)[0]
