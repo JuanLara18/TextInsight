@@ -29,13 +29,16 @@ from openpyxl.drawing.image import Image
 from .connection import generar_respuesta
 from src.controllers import generar_prompt_con_contexto
 
-# Verificar si el modelo ya está descargado, si no, descargarlo
+# Verificar si el modelo está instalado y cargarlo
 model_name = "es_core_news_sm"
-if not os.path.exists(spacy.util.get_package_path(model_name)):
-    download(model_name)
 
-# Inicialización de spaCy para el procesamiento de texto en español
-nlp = spacy.load('es_core_news_sm')
+try:
+    nlp = spacy.load(model_name)
+except OSError:
+    # Descargar el modelo si no está instalado
+    from spacy.cli import download
+    download(model_name)
+    nlp = spacy.load(model_name)
 
 def get_sentiment_pipeline():
     try:
