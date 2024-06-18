@@ -3,6 +3,7 @@
 # Importaciones de bibliotecas estándar
 import re
 import io
+import os
 import unicodedata
 from collections import Counter
 from typing import List
@@ -11,6 +12,7 @@ from typing import List
 import matplotlib.pyplot as plt
 import pandas as pd
 import spacy
+from spacy.cli import download
 import Levenshtein as lev
 import streamlit as st
 import numpy as np
@@ -26,6 +28,11 @@ from openpyxl.drawing.image import Image
 # Importaciones de módulos internos
 from .connection import generar_respuesta
 from src.controllers import generar_prompt_con_contexto
+
+# Verificar si el modelo ya está descargado, si no, descargarlo
+model_name = "es_core_news_sm"
+if not os.path.exists(spacy.util.get_package_path(model_name)):
+    download(model_name)
 
 # Inicialización de spaCy para el procesamiento de texto en español
 nlp = spacy.load('es_core_news_sm')
