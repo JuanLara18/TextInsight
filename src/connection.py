@@ -43,9 +43,9 @@ def generar_respuesta(modelo_seleccionado, prompt, max_tokens=1000):
         )
         # Extraer y retornar el contenido de la respuesta generada
         return response['choices'][0]['message']['content'].strip()
-    except openai.error.OpenAIError as e:
+    except openai.OpenAIError as e:
         # Manejo de errores relacionados con la API de OpenAI
-        raise openai.error.OpenAIError(f"Error al generar respuesta del modelo: {e}")
+        raise RuntimeError(f"Error al generar respuesta del modelo: {e}")
 
 def obtener_descripcion_modelo(modelo_seleccionado):
     """
