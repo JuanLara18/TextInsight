@@ -6,7 +6,6 @@ import pandas as pd
 from dotenv import load_dotenv
 import matplotlib.pyplot as plt
 import seaborn as sns
-from openai.error import OpenAIError  # Asegúrate de importar OpenAIError
 
 # Cargar variables de entorno desde el archivo 'src/openai_api.env' para mayor seguridad
 load_dotenv('src/openai_api.env')
