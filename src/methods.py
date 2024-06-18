@@ -199,22 +199,31 @@ def normalizar_texto(texto: str) -> str:
 
 def corregir_frase(frase: str, sensibilidad: str, modelo_seleccionado: str, contexto: dict) -> str:
     """
-    Función que corrige individualmente cada frase de acuerdo al nivel de sensibilidad,
-    utilizando el contexto del proyecto.
+    Corrige una frase utilizando un modelo de OpenAI específico.
+    
+    Args:
+        frase (str): La frase a corregir.
+        sensibilidad (str): El nivel de corrección deseado.
+        modelo_seleccionado (str): El modelo de OpenAI a utilizar.
+        contexto (dict): El contexto del proyecto.
+        
+    Returns:
+        str: La frase corregida.
     """
     if sensibilidad == "Ninguna":
         return frase  # No se realiza corrección
 
-    # Generar el prompt de corrección con contexto
-    prompt_correccion = generar_prompt_con_contexto(frase, sensibilidad, contexto)
-
-    respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt_correccion)
-    # Normalización a minúsculas y verificación de la corrección (implementar según lo discutido anteriormente)
-    respuesta_corregida = normalizar_texto(respuesta_corregida)
-    if es_correccion_valida(frase, respuesta_corregida):
-        return respuesta_corregida
-    else:
-        return normalizar_texto(frase)
+    try: 
+        prompt_correccion = generar_prompt_con_contexto(frase, sensibilidad, contexto)
+        respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt_correccion)
+        # Normalización a minúsculas y verificación de la corrección (implementar según lo discutido anteriormente)
+        respuesta_corregida = normalizar_texto(respuesta_corregida)
+        if es_correccion_valida(frase, respuesta_corregida):
+            return respuesta_corregida
+        else:
+            return normalizar_texto(frase)
+    except Exception as e:
+        raise RuntimeError(f"Error al corregir la frase: {e}")
 
 def es_correccion_valida(original: str, corregido: str) -> bool:
     """

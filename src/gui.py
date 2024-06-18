@@ -147,20 +147,24 @@ def data_loading_page():
             else:
                 costo = calcular_costo(tokens_entrada, tokens_salida, st.session_state["modelo_seleccionado"])
                 tiempo_estimado = estimar_tiempo_procesamiento(st.session_state["df"], st.session_state["modelo_seleccionado"])
+            
 
         with col2:
             st.write(f"El costo estimado es: ${costo:.4f}")
             st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Corregir y Procesar"):
                 with st.spinner("Corrigiendo y procesando datos..."):
-                    contexto = {
-                        "proyecto_nombre": st.session_state.get("proyecto_nombre", ""),
-                        "proyecto_descripcion": st.session_state.get("proyecto_descripcion", ""),
-                        "palabras_clave": st.session_state.get("palabras_clave", []),
-                        "notas_adicionales": st.session_state.get("notas_adicionales", "")
-                    }
-                    st.session_state["corregidos_df"] = corregir_y_procesar_datos(st.session_state["df"], st.session_state["sensibilidad"], st.session_state["modelo_seleccionado"], contexto)
-                st.success("Corrección y procesamiento finalizados")
+                    try:
+                        contexto = {
+                            "proyecto_nombre": st.session_state.get("proyecto_nombre", ""),
+                            "proyecto_descripcion": st.session_state.get("proyecto_descripcion", ""),
+                            "palabras_clave": st.session_state.get("palabras_clave", []),
+                            "notas_adicionales": st.session_state.get("notas_adicionales", "")
+                        }
+                        st.session_state["corregidos_df"] = corregir_y_procesar_datos(st.session_state["df"], st.session_state["sensibilidad"], st.session_state["modelo_seleccionado"], contexto)
+                        st.success("Corrección y procesamiento finalizados")
+                    except Exception as e:
+                        st.error(f"Error al corregir y procesar datos: {e}")
         
         if st.session_state.corregidos_df is not None:
             st.header("Visualización de Datos")
