@@ -1,28 +1,26 @@
 # src/gui.py
 import streamlit as st
-import pandas as pd
-import networkx as nx
 
 from .controllers import load_and_extract_data, mostrar_analisis_sentimientos
 from .methods import (
     calcular_costo,
     calculate_top_n_grams,
-    corregir_frase,
     corregir_y_procesar_datos,
     estimar_tiempo_procesamiento,
+    exportar_resultados,
     extract_project_info_from_file, generate_wordcloud,
     ngramas_a_dataframe, generar_temas,
-    ngramas_a_grafo,
+    generar_grafo,
     obtener_descripcion_sensibilidad,
-    preprocesar_texto,
     show_analysis,
-    visualizar_datos
+    visualizar_datos,
+    generar_grafico_sentimientos,
+    generar_grafico_confiabilidad
 )
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
 
 st.session_state["modelo_seleccionado"] = "gpt-3.5-turbo"
 
-# Función para mostrar la página de bienvenida
 def welcome_page():
     
      # Inicializa el estado si es necesario
@@ -148,14 +146,19 @@ def data_loading_page():
             else:
                 costo = calcular_costo(tokens_entrada, tokens_salida, st.session_state["modelo_seleccionado"])
                 tiempo_estimado = estimar_tiempo_procesamiento(st.session_state["df"], st.session_state["modelo_seleccionado"])
-            
 
         with col2:
             st.write(f"El costo estimado es: ${costo:.4f}")
             st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Corregir y Procesar"):
                 with st.spinner("Corrigiendo y procesando datos..."):
-                    st.session_state["corregidos_df"] = corregir_y_procesar_datos(st.session_state["df"], st.session_state["sensibilidad"], st.session_state["modelo_seleccionado"])
+                    contexto = {
+                        "proyecto_nombre": st.session_state.get("proyecto_nombre", ""),
+                        "proyecto_descripcion": st.session_state.get("proyecto_descripcion", ""),
+                        "palabras_clave": st.session_state.get("palabras_clave", []),
+                        "notas_adicionales": st.session_state.get("notas_adicionales", "")
+                    }
+                    st.session_state["corregidos_df"] = corregir_y_procesar_datos(st.session_state["df"], st.session_state["sensibilidad"], st.session_state["modelo_seleccionado"], contexto)
                 st.success("Corrección y procesamiento finalizados")
         
         if st.session_state.corregidos_df is not None:
@@ -166,9 +169,6 @@ def data_loading_page():
             if 'Procesados' in st.session_state.corregidos_df.columns:
                 show_analysis(st.session_state["corregidos_df"])
 
-  
-            
-# Función para la página de análisis
 def analysis_page():
     st.title("Análisis de Datos")
 
@@ -181,7 +181,7 @@ def analysis_page():
             texto_procesado_para_nube = ' '.join(df['Procesados'].tolist())
             tokens_entrada = len(texto_procesado_para_nube.split())
             costo = 0  # No hay costo de API
-            tiempo_estimado = 1  # 1 minuto como tiempo constante estimado
+            tiempo_estimado = 0.1  # 1 minuto como tiempo constante estimado
             st.write(f"El costo estimado es: ${costo:.4f}")
             st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Generar Nube de Palabras"):
@@ -197,7 +197,7 @@ def analysis_page():
             texto_procesado_para_ngramas = df['Procesados'].tolist()
             tokens_entrada = len(' '.join(texto_procesado_para_ngramas).split())
             costo = 0  # No hay costo de API
-            tiempo_estimado = 1  # 1 minuto como tiempo constante estimado
+            tiempo_estimado = 0.1  # 1 minuto como tiempo constante estimado
             st.write(f"El costo estimado es: ${costo:.4f}")
             st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Generar N-Gramas"):
@@ -218,22 +218,29 @@ def analysis_page():
             if st.button("Generar Análisis de Sentimientos"):
                 with st.spinner("Generando análisis de sentimientos..."):
                     mostrar_analisis_sentimientos(st.session_state.corregidos_df)
+                    fig_sentimientos = generar_grafico_sentimientos(st.session_state.corregidos_df)
+                    fig_confiabilidad = generar_grafico_confiabilidad(st.session_state.corregidos_df)
+                    st.pyplot(fig_sentimientos)
+                    st.pyplot(fig_confiabilidad)
 
         # Expander para el grafo de n-gramas
         with st.expander("Grafo"):
             st.markdown("Genera un grafo basado en los n-gramas para visualizar las relaciones entre las palabras en el texto. Esto puede revelar estructuras y patrones en el uso del lenguaje.")
             n_value = st.number_input("Número de palabras a relacionar en el grafo", min_value=2, value=2, key='n_value_graph')
+            min_weight = st.slider("Selecciona el mínimo número de menciones para mostrar:", 1, 10, 2, key='min_weight_graph')
             texto_procesado_para_grafo = df['Procesados'].tolist()
             tokens_entrada = len(' '.join(texto_procesado_para_grafo).split())
             costo = 0  # No hay costo de API
-            tiempo_estimado = 2  # 2 minutos como tiempo constante estimado
+            tiempo_estimado = 0.2  # 2 minutos como tiempo constante estimado
             st.write(f"El costo estimado es: ${costo:.4f}")
             st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Generar Grafo"):
                 with st.spinner("Generando grafo..."):
-                    G = ngramas_a_grafo(texto_procesado_para_grafo, n_value)
-                    nx.draw(G, with_labels=True)
-                    st.pyplot()
+                    fig = generar_grafo(texto_procesado_para_grafo, n_value, min_weight)
+                    if fig is not None:  # Verificar que se haya generado el grafo
+                        st.pyplot(fig)
+                    else:
+                        st.write("No se generó ningún grafo. Intenta con un valor menor de n o ajusta el filtro de menciones.")
 
         # Expander para la generación de temas
         with st.expander("Temas"):
@@ -253,13 +260,28 @@ def analysis_page():
                     st.dataframe(df_temas)
 
     else:
-        st.write("Por favor, carga y procesa los datos en la pestaña 'Carga de Datos' antes de continuar con el análisis.")
-
-
+        st.write("Por favor, carga y procesa los datos en la pestaña 'Taller de Datos' antes de continuar con el análisis.")
 
 def export_page():
     st.title("Exportar Resultados")
-    st.write("Acá vamos tener los parámetros y exportar todos los resultados de acuerdo a los parámetros dados")
+    st.write("Selecciona los elementos que deseas exportar:")
+
+    opciones_exportacion = []
+    if "df" in st.session_state:
+        opciones_exportacion.append("Datos Originales y Corregidos")
+    if "corregidos_df" in st.session_state and "Procesados" in st.session_state["corregidos_df"].columns:
+        opciones_exportacion.append("Datos Procesados")
+        opciones_exportacion.append("Análisis de Sentimientos")
+        opciones_exportacion.append("N-Gramas")
+        opciones_exportacion.append("Nube de Palabras")
+        opciones_exportacion.append("Gráfico de Sentimientos")
+
+    seleccionados = st.multiselect("Elige qué deseas exportar:", opciones_exportacion)
+    
+    if st.button("Exportar"):
+        with st.spinner("Exportando..."):
+            exportar_resultados(seleccionados)
+        st.success("Exportación completada.")
 
 def run_app():
     page = st.sidebar.radio("Navegación", ["Inicio", "Marco del proyecto", "Taller de Datos","Análisis de datos", "Exportar resultados"])
