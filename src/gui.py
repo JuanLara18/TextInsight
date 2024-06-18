@@ -1,7 +1,5 @@
 # src/gui.py
 import streamlit as st
-import networkx as nx
-import matplotlib.pyplot as plt
 
 from .controllers import load_and_extract_data, mostrar_analisis_sentimientos
 from .methods import (
@@ -12,16 +10,17 @@ from .methods import (
     exportar_resultados,
     extract_project_info_from_file, generate_wordcloud,
     ngramas_a_dataframe, generar_temas,
-    ngramas_a_grafo,
+    generar_grafo,
     obtener_descripcion_sensibilidad,
     show_analysis,
-    visualizar_datos
+    visualizar_datos,
+    generar_grafico_sentimientos,
+    generar_grafico_confiabilidad
 )
 from .connection import obtener_descripcion_modelo, generar_grafico_comparativo
 
 st.session_state["modelo_seleccionado"] = "gpt-3.5-turbo"
 
-# Función para mostrar la página de bienvenida
 def welcome_page():
     
      # Inicializa el estado si es necesario
@@ -147,7 +146,6 @@ def data_loading_page():
             else:
                 costo = calcular_costo(tokens_entrada, tokens_salida, st.session_state["modelo_seleccionado"])
                 tiempo_estimado = estimar_tiempo_procesamiento(st.session_state["df"], st.session_state["modelo_seleccionado"])
-            
 
         with col2:
             st.write(f"El costo estimado es: ${costo:.4f}")
@@ -171,9 +169,6 @@ def data_loading_page():
             if 'Procesados' in st.session_state.corregidos_df.columns:
                 show_analysis(st.session_state["corregidos_df"])
 
-  
-            
-# Función para la página de análisis
 def analysis_page():
     st.title("Análisis de Datos")
 
@@ -237,15 +232,11 @@ def analysis_page():
             st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Generar Grafo"):
                 with st.spinner("Generando grafo..."):
-                    G = ngramas_a_grafo(texto_procesado_para_grafo, n_value, min_weight)
-                    if G.number_of_nodes() > 0:  # Verificar que el grafo no esté vacío
-                        fig, ax = plt.subplots()
-                        pos = nx.spring_layout(G)
-                        nx.draw(G, pos, with_labels=True, ax=ax, node_size=500, node_color='skyblue', font_size=10, width=[d['weight']*0.1 for (u, v, d) in G.edges(data=True)])
+                    fig = generar_grafo(texto_procesado_para_grafo, n_value, min_weight)
+                    if fig is not None:  # Verificar que se haya generado el grafo
                         st.pyplot(fig)
                     else:
                         st.write("No se generó ningún grafo. Intenta con un valor menor de n o ajusta el filtro de menciones.")
-
 
         # Expander para la generación de temas
         with st.expander("Temas"):

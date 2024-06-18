@@ -25,6 +25,7 @@ from openpyxl.drawing.image import Image
 
 # Importaciones de módulos internos
 from .connection import generar_respuesta
+from src.controllers import generar_prompt_con_contexto
 
 # Inicialización de spaCy para el procesamiento de texto en español
 nlp = spacy.load('es_core_news_sm')
@@ -403,12 +404,20 @@ def analisis_sentimientos_transformers(frases):
     return resultados_sentimientos
 
 def mostrar_analisis_sentimientos(df):
-    """Muestra el análisis de sentimientos con un gráfico de distribución."""
+    """
+    Muestra el análisis de sentimientos con un gráfico de distribución.
+    
+    Args:
+    - df: DataFrame con las frases corregidas.
+    """
     resultados_sentimientos = analisis_sentimientos_transformers(df['Corregidos'].tolist())
     
     # Crear un DataFrame con los resultados y agregar la columna 'Originales'
     df_sentimientos = pd.DataFrame(resultados_sentimientos)
     df_sentimientos['Originales'] = df['Originales']
+    
+    # Reordenar las columnas para que 'Originales' aparezca primero
+    df_sentimientos = df_sentimientos[['Originales', 'Sentimiento', 'Confiabilidad']]
     
     # Mostrar el DataFrame en Streamlit
     st.write(df_sentimientos)
@@ -421,7 +430,7 @@ def mostrar_analisis_sentimientos(df):
     plt.ylabel('Frecuencia')
     plt.xticks(rotation=45)
     st.pyplot(plt)
-    
+
     # Crear un gráfico de promedio de confiabilidad por sentimiento
     plt.figure(figsize=(10, 6))
     promedio_confiabilidad = df_sentimientos.groupby('Sentimiento')['Confiabilidad'].mean().reindex(['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
@@ -432,6 +441,24 @@ def mostrar_analisis_sentimientos(df):
     plt.xticks(rotation=45)
     st.pyplot(plt)
 
+def generar_grafico_sentimientos(df_sentimientos):
+    fig, ax = plt.subplots(figsize=(10, 6))
+    sns.countplot(data=df_sentimientos, x='Sentimiento', palette='viridis', order=['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'], ax=ax)
+    ax.set_title('Distribución de Sentimientos')
+    ax.set_xlabel('Sentimiento')
+    ax.set_ylabel('Frecuencia')
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+    return fig
+
+def generar_grafico_confiabilidad(df_sentimientos):
+    fig, ax = plt.subplots(figsize=(10, 6))
+    promedio_confiabilidad = df_sentimientos.groupby('Sentimiento')['Confiabilidad'].mean().reindex(['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
+    sns.barplot(x=promedio_confiabilidad.index, y=promedio_confiabilidad.values, palette='viridis', ax=ax)
+    ax.set_title('Promedio de Confiabilidad por Sentimiento')
+    ax.set_xlabel('Sentimiento')
+    ax.set_ylabel('Promedio de Confiabilidad')
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+    return fig
 
 # Grafo ----------------------------------------------------------------
 
@@ -450,6 +477,16 @@ def ngramas_a_grafo(frases_procesadas, n, min_weight=1):
                     G.add_edge(ngrama[i], ngrama[i + 1], weight=frecuencia)
     
     return G
+
+def generar_grafo(texto_procesado_para_grafo, n_value, min_weight):
+    G = ngramas_a_grafo(texto_procesado_para_grafo, n_value, min_weight)
+    if G.number_of_nodes() > 0:  # Verificar que el grafo no esté vacío
+        fig, ax = plt.subplots()
+        pos = nx.spring_layout(G)
+        nx.draw(G, pos, with_labels=True, ax=ax, node_size=500, node_color='skyblue', font_size=10, width=[d['weight']*0.1 for (u, v, d) in G.edges(data=True)])
+        return fig
+    else:
+        return None
 
 ###################################################################
 ####################### Exportar datos ############################
