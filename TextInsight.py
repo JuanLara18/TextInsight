@@ -3,6 +3,9 @@ TextInsight app entrypoint
 """
 import streamlit as st
 
+# Importar configuración de TensorFlow
+from src import config_tensorflow
+
 from src.gui import run_app
 
 st.set_page_config(

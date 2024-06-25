@@ -421,7 +421,7 @@ def generate_wordcloud(frases: List[str]):
     fig = plt.figure(figsize=(15,8))
     plt.imshow(wordcloud, interpolation='bilinear') # Usar interpolación bilinear para suavizar los bordes de las palabras
     plt.axis("off")
-    plt.show() # Muestra la figura en lugar de cerrarla para poder visualizarla directamente
+    # plt.show() # Muestra la figura en lugar de cerrarla para poder visualizarla directamente
     
     return fig
 
@@ -501,14 +501,29 @@ def mostrar_analisis_sentimientos(df):
     plt.xticks(rotation=45)
     st.pyplot(plt)
 
-def generar_grafico_sentimientos(df_sentimientos):
+
+def generar_grafico_sentimientos(df):
+    """
+    Genera un gráfico de la distribución de sentimientos a partir del DataFrame proporcionado.
+
+    Args:
+        df (pd.DataFrame): DataFrame que contiene los datos procesados.
+
+    Returns:
+        matplotlib.figure.Figure: Figura de Matplotlib con el gráfico generado.
+    """
     fig, ax = plt.subplots(figsize=(10, 6))
-    sns.countplot(data=df_sentimientos, x='Sentimiento', palette='viridis', order=['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'], ax=ax)
+    # Asegúrate de que 'Sentimiento' exista en el DataFrame
+    if 'Sentimiento' not in df.columns:
+        raise ValueError("El DataFrame no contiene una columna llamada 'Sentimiento'")
+    
+    sns.countplot(data=df, x='Sentimiento', palette='viridis', order=['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'], ax=ax)
     ax.set_title('Distribución de Sentimientos')
     ax.set_xlabel('Sentimiento')
     ax.set_ylabel('Frecuencia')
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
     return fig
+
 
 def generar_grafico_confiabilidad(df_sentimientos):
     fig, ax = plt.subplots(figsize=(10, 6))
