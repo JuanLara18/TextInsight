@@ -200,33 +200,45 @@ def normalizar_texto(texto: str) -> str:
     texto = re.sub(r'\s+', ' ', texto).strip()  # Eliminar espacios extras
     return texto
 
-def corregir_frase(frase: str, sensibilidad: str, modelo_seleccionado: str, contexto: dict) -> str:
-    """
-    Corrige una frase utilizando un modelo de OpenAI específico.
-    
-    Args:
-        frase (str): La frase a corregir.
-        sensibilidad (str): El nivel de corrección deseado.
-        modelo_seleccionado (str): El modelo de OpenAI a utilizar.
-        contexto (dict): El contexto del proyecto.
-        
-    Returns:
-        str: La frase corregida.
-    """
+def corregir_frase(frase, sensibilidad, modelo_seleccionado, contexto):
+    # Definir el nivel de detalle según la sensibilidad
     if sensibilidad == "Ninguna":
         return frase  # No se realiza corrección
+    elif sensibilidad == "Leve":
+        detalle = "Realiza correcciones ortográficas básicas."
+    elif sensibilidad == "Moderado":
+        detalle = "Realiza correcciones ortográficas y gramaticales, pero no cambies la estructura de las frases."
+    elif sensibilidad == "Exhaustivo":
+        detalle = "Realiza correcciones ortográficas, gramaticales y mejora la claridad y fluidez del texto."
 
-    try: 
-        prompt_correccion = generar_prompt_con_contexto(frase, sensibilidad, contexto)
+    prompt_correccion = f"""
+    Necesito tu ayuda para corregir una serie de textos que contienen respuestas a una pregunta abierta. Estos textos tienen errores ortográficos y gramaticales que quiero corregir antes de analizarlos para obtener insights. Por favor, realiza las siguientes tareas:
+    
+    1. **Corrección Ortográfica y Gramatical**: {detalle}
+    2. **Conservación del Sentido Original**: Asegúrate de que las correcciones no alteren el significado original de las respuestas.
+    3. **Formato**: Presenta cada texto corregido en un nuevo párrafo separado para mayor claridad.
+    
+    Contexto del Proyecto: {contexto}
+    
+    Aquí tienes los textos a corregir:
+    
+    ---
+    
+    {frase}
+    
+    ---
+    
+    Ejemplo:
+    Original: "Este es un texo de prueba."
+    Corregido: "Este es un texto de prueba."
+    """
+
+    try:
         respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt_correccion)
-        # Normalización a minúsculas y verificación de la corrección (implementar según lo discutido anteriormente)
-        respuesta_corregida = normalizar_texto(respuesta_corregida)
-        if es_correccion_valida(frase, respuesta_corregida):
-            return respuesta_corregida
-        else:
-            return normalizar_texto(frase)
+        return respuesta_corregida
     except Exception as e:
         raise RuntimeError(f"Error al corregir la frase: {e}")
+
 
 def es_correccion_valida(original: str, corregido: str) -> bool:
     """

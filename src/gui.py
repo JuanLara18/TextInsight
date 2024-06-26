@@ -55,7 +55,7 @@ def framework_project():
     opcion = st.radio("¿Cómo deseas ingresar la información del proyecto?", ("Cargar Archivo", "Formulario Manual"))
     
     # Inicializar variables para la información del proyecto
-    proyecto_nombre = ""
+    pregunta_que_responde = ""
     proyecto_descripcion = ""
     palabras_clave = ""
     notas_adicionales = ""
@@ -70,7 +70,7 @@ def framework_project():
             content = uploaded_file.getvalue().decode("utf-8")
             info = extract_project_info_from_file(content)
             
-            proyecto_nombre = info["proyecto_nombre"]
+            pregunta_que_responde = info["pregunta_que_responde"]
             proyecto_descripcion = info["proyecto_descripcion"]
             palabras_clave = info["palabras_clave"]
             notas_adicionales = info["notas_adicionales"]
@@ -78,10 +78,9 @@ def framework_project():
             st.success("Información extraída del archivo con éxito. Puedes revisar y modificar los campos a continuación.")
     
     elif opcion == "Formulario Manual":
-    
         # Mostrar los campos de entrada (se usará tanto para archivo como para formulario manual)
-        st.header("Nombre del Proyecto")
-        proyecto_nombre = st.text_input("Introduce el nombre del proyecto:", value=proyecto_nombre)
+        st.header("Pregunta que responde")
+        pregunta_que_responde = st.text_area("Introduce la pregunta que responde el proyecto:", value=pregunta_que_responde)
         
         st.header("Descripción del Proyecto")
         proyecto_descripcion = st.text_area("Introduce una descripción detallada del proyecto:", value=proyecto_descripcion)
@@ -95,14 +94,14 @@ def framework_project():
         # Almacenar la información en el estado de sesión
         if st.button("Guardar Información"):
             try:
-                st.session_state["proyecto_nombre"] = proyecto_nombre
+                st.session_state["pregunta_que_responde"] = pregunta_que_responde
                 st.session_state["proyecto_descripcion"] = proyecto_descripcion
                 st.session_state["palabras_clave"] = palabras_clave.split(',')
                 st.session_state["notas_adicionales"] = notas_adicionales
                 st.success("Información guardada con éxito.")
             except Exception as e:
                 st.error(f"Error al guardar la información: {e}")
-                
+            
 def data_loading_page():
     # Inicialización de variables de estado si es necesario
     if 'sensibilidad' not in st.session_state:
