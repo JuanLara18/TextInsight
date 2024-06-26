@@ -229,7 +229,7 @@ def analysis_page():
             st.markdown("Genera un grafo basado en los n-gramas para visualizar las relaciones entre las palabras en el texto. Esto puede revelar estructuras y patrones en el uso del lenguaje.")
             n_value = st.number_input("Número de palabras a relacionar en el grafo", min_value=2, value=2, key='n_value_graph')
             min_weight = st.slider("Selecciona el mínimo número de menciones para mostrar:", 1, 10, 2, key='min_weight_graph')
-            texto_procesado_para_grafo = df['Procesados'].tolist()
+            texto_procesado_para_grafo = st.session_state["corregidos_df"]['Procesados'].tolist()
             tokens_entrada = len(' '.join(texto_procesado_para_grafo).split())
             costo = 0  # No hay costo de API
             tiempo_estimado = 0.2  # 2 minutos como tiempo constante estimado

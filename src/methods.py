@@ -153,7 +153,6 @@ def preparar_datos_para_analisis(df):
         df['Procesados'] = df['Originales'].apply(preprocesar_texto)
     return df
 
-
 # Preprocesamiento ---------------------------------------------------
 
 def preprocesar_texto(texto: str) -> str:
@@ -312,7 +311,6 @@ def corregir_frases_por_lote(frases: List[str], sensibilidad: str, tamaño_lote=
     
     return frases_corregidas
 
-
 def corregir_y_procesar_datos(df: pd.DataFrame, sensibilidad: str, modelo_seleccionado: str, contexto: dict) -> pd.DataFrame:
     """
     Aplica la corrección y el preprocesamiento a todas las frases en el DataFrame,
@@ -321,7 +319,6 @@ def corregir_y_procesar_datos(df: pd.DataFrame, sensibilidad: str, modelo_selecc
     df['Corregidos'] = df['Originales'].apply(lambda frase: corregir_frase(frase, sensibilidad, modelo_seleccionado, contexto))
     df['Procesados'] = df['Corregidos'].apply(preprocesar_texto)
     return df
-
 
 # Distancias -----------------------------------------------------------
 
@@ -418,8 +415,6 @@ def show_analysis(df):
     st.markdown("### Sugerencias para Mejorar el Análisis")
     st.markdown("- **Asegúrese de la Calidad del Texto**: Textos con muchos errores tipográficos o gramaticales pueden afectar negativamente los resultados del análisis. Utilice niveles de corrección adecuados.")
     st.markdown("- **Elija el Modelo Apropiado**: Dependiendo de la complejidad y el volumen de los textos, seleccionar un modelo más avanzado como GPT-4 puede proporcionar mejores resultados, aunque a un costo mayor.")
-
-
     
 ###################################################################
 ###################### Análisis de datos ##########################
@@ -559,7 +554,6 @@ def generar_grafico_sentimientos(df):
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
     return fig
 
-
 def generar_grafico_confiabilidad(df_sentimientos):
     fig, ax = plt.subplots(figsize=(10, 6))
     promedio_confiabilidad = df_sentimientos.groupby('Sentimiento')['Confiabilidad'].mean().reindex(['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
@@ -582,18 +576,52 @@ def ngramas_a_grafo(frases_procesadas, n, min_weight=1):
     
     for ngrama, frecuencia in n_grams_counts.items():
         if frecuencia >= min_weight:  # Filtrar por frecuencia
-            if len(ngrama) == n:
-                for i in range(len(ngrama) - 1):
-                    G.add_edge(ngrama[i], ngrama[i + 1], weight=frecuencia)
+            for i in range(len(ngrama) - 1):
+                if not G.has_edge(ngrama[i], ngrama[i + 1]):
+                    G.add_edge(ngrama[i], ngrama[i + 1], weight=0)
+                G[ngrama[i]][ngrama[i + 1]]['weight'] += frecuencia
     
     return G
 
 def generar_grafo(texto_procesado_para_grafo, n_value, min_weight):
+    """
+    Genera un gráfico de un grafo basado en los n-gramas del texto procesado.
+
+    Args:
+        texto_procesado_para_grafo (list): Lista de frases procesadas.
+        n_value (int): Número de palabras a relacionar en el grafo.
+        min_weight (int): Mínimo número de menciones para mostrar en el grafo.
+
+    Returns:
+        matplotlib.figure.Figure: Figura de Matplotlib con el grafo generado.
+    """
+    # Generar el grafo a partir de los n-gramas
     G = ngramas_a_grafo(texto_procesado_para_grafo, n_value, min_weight)
-    if G.number_of_nodes() > 0:  # Verificar que el grafo no esté vacío
-        fig, ax = plt.subplots()
+    
+    # Verificar que el grafo no esté vacío
+    if G.number_of_nodes() > 0:
+        # Crear la figura y el eje para el gráfico
+        fig, ax = plt.subplots(figsize=(10, 10))
+        
+        # Obtener las posiciones de los nodos utilizando el layout de spring
         pos = nx.spring_layout(G)
-        nx.draw(G, pos, with_labels=True, ax=ax, node_size=500, node_color='skyblue', font_size=10, width=[d['weight']*0.1 for (u, v, d) in G.edges(data=True)])
+        
+        # Dibujar los nodos del grafo
+        nx.draw_networkx_nodes(G, pos, ax=ax, node_size=500, node_color='skyblue')
+        
+        # Dibujar las etiquetas de los nodos
+        nx.draw_networkx_labels(G, pos, ax=ax)
+        
+        # Dibujar las aristas del grafo con pesos escalados
+        edges = nx.draw_networkx_edges(
+            G, pos, ax=ax, 
+            width=[d['weight']*0.1 for (u, v, d) in G.edges(data=True)]
+        )
+        
+        # Configurar el título del gráfico y ocultar los ejes
+        plt.title("Grafo de N-Gramas")
+        plt.axis('off')
+        
         return fig
     else:
         return None
@@ -629,7 +657,7 @@ def exportar_resultados(seleccionados):
 
         # Exportar Nube de Palabras y Gráfico de Sentimientos
         workbook = writer.book
-        if "Nube de Palabras" in seleccionados or "Gráfico de Sentimientos" in seleccionados:
+        if "Nube de Palabras" in seleccionados or "Grafo de N-Gramas" in seleccionados:
             imgdata = io.BytesIO()
             
             # Nube de Palabras
@@ -642,12 +670,12 @@ def exportar_resultados(seleccionados):
                 worksheet.add_image(img, 'A1')
 
             # Gráfico de Sentimientos
-            if "Gráfico de Sentimientos" in seleccionados and "corregidos_df" in st.session_state:
-                fig = generar_grafico_sentimientos(st.session_state["corregidos_df"])
+            if "Grafo de N-Gramas" in seleccionados and "corregidos_df" in st.session_state:
+                fig = generar_grafo(st.session_state["corregidos_df"]['Procesados'].tolist(), n_value=2, min_weight=2)
                 fig.savefig(imgdata, format='png')
                 imgdata.seek(0)
                 img = Image(imgdata)
-                worksheet = workbook.create_sheet("Gráfico de Sentimientos")
+                worksheet = workbook.create_sheet("Grafo de N-Gramas")
                 worksheet.add_image(img, 'A1')
 
         writer.save()
@@ -709,7 +737,6 @@ def calcular_estadisticas(df):
 
     return pd.DataFrame(estadisticas).transpose()
 
-
 def calcular_costo(tokens_entrada, tokens_salida, modelo):
     precios = {
         "gpt-3.5-turbo": {"entrada": 0.0015, "salida": 0.002},
@@ -727,7 +754,6 @@ def calcular_costo(tokens_entrada, tokens_salida, modelo):
     costo_entrada = tokens_entrada / 1000 * precios[modelo]["entrada"]
     costo_salida = tokens_salida / 1000 * precios[modelo]["salida"]
     return costo_entrada + costo_salida
-
 
 def estimar_tiempo_procesamiento(df, modelo_seleccionado):
     tiempo_por_token = 0.05  # 50 ms por token como suposición
@@ -747,4 +773,3 @@ def estimar_tiempo_procesamiento(df, modelo_seleccionado):
         raise ValueError("El tiempo estimado no puede ser negativo.")
 
     return tiempo_estimado / 60  # Convertir a minutos
-
