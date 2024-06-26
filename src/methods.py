@@ -385,6 +385,12 @@ def show_analysis(df):
     st.header("Análisis de los cambios")
     st.markdown("En esta sección se presentan varios análisis de los datos procesados. A continuación, se muestran las métricas calculadas y sus explicaciones, seguidas de sugerencias para mejorar el análisis.")
 
+    # Verifica que las columnas necesarias existen en el DataFrame
+    required_columns = ['Originales', 'Corregidos', 'Procesados']
+    if not all(column in df.columns for column in required_columns):
+        st.error("El DataFrame no contiene las columnas necesarias para el análisis: 'Originales', 'Corregidos', 'Procesados'.")
+        return
+
     # Descripciones estadísticas del texto
     st.markdown("### Descripciones estadísticas del texto")
     st.markdown("Se presentan las descripciones estadísticas de las columnas 'Originales', 'Corregidos' y 'Procesados'. Estas estadísticas incluyen la longitud promedio del texto, la cantidad de datos nulos y la cantidad promedio de palabras por columna.")
@@ -394,20 +400,24 @@ def show_analysis(df):
     st.markdown("- **Datos Nulos**: Indica la cantidad de valores nulos en cada columna. Es importante asegurarse de que no haya demasiados datos faltantes, ya que esto puede afectar la calidad del análisis.")
     st.markdown("- **Cantidad de Palabras Promedio**: Muestra la cantidad promedio de palabras en los textos de cada columna. Esto puede dar una idea de la densidad informativa de los textos.")
 
-    
+    # Cuadro de métricas
     st.markdown("### Cuadro de métricas")
     st.markdown("A continuación se presentan las métricas de distancia de Levenshtein, distancia de Jaccard y similitud del coseno con TF-IDF para comparar las columnas 'Originales', 'Corregidos' y 'Procesados'. Estas métricas ayudan a evaluar la similitud y las diferencias entre los textos en cada etapa del procesamiento.")
-    st.write(distancias_palabras(df))
+    try:
+        distancias = distancias_palabras(df)
+        st.write(distancias)
+    except Exception as e:
+        st.error(f"Error al calcular las distancias: {e}")
+
     st.markdown("- **Distancia de Levenshtein**: Mide el número mínimo de operaciones necesarias para transformar una cadena de caracteres en otra. Operaciones posibles incluyen inserciones, eliminaciones o sustituciones de un solo carácter. Una distancia menor indica que las frases son más similares. [Más información](https://en.wikipedia.org/wiki/Levenshtein_distance).")
     st.markdown("- **Distancia de Jaccard**: Mide la similitud entre dos conjuntos de datos. Se calcula como el tamaño de la intersección dividido por el tamaño de la unión de los conjuntos de palabras. Un valor más alto indica una mayor similitud. [Más información](https://en.wikipedia.org/wiki/Jaccard_index).")
     st.markdown("- **Similitud del Coseno con TF-IDF**: Evalúa la similitud entre dos textos en función de sus representaciones vectoriales. Un valor cercano a 1 indica que los textos tratan sobre temas muy similares, mientras que un valor cercano a 0 sugiere que hablan de temas distintos. [Más información sobre Similitud del Coseno](https://en.wikipedia.org/wiki/Cosine_similarity) y [TF-IDF](https://en.wikipedia.org/wiki/Tf%E2%80%93idf).")
-    
-    
+
     # Sugerencias para mejorar el análisis
     st.markdown("### Sugerencias para Mejorar el Análisis")
     st.markdown("- **Asegúrese de la Calidad del Texto**: Textos con muchos errores tipográficos o gramaticales pueden afectar negativamente los resultados del análisis. Utilice niveles de corrección adecuados.")
     st.markdown("- **Elija el Modelo Apropiado**: Dependiendo de la complejidad y el volumen de los textos, seleccionar un modelo más avanzado como GPT-4 puede proporcionar mejores resultados, aunque a un costo mayor.")
-    #st.markdown("- **Considere el Contexto de los Textos**: Al analizar textos, es importante considerar el contexto en el que fueron escritos. Esto puede proporcionar insights adicionales y mejorar la interpretación de los resultados.")
+
 
     
 ###################################################################
@@ -683,15 +693,17 @@ def calcular_estadisticas(df):
     - Un DataFrame con las estadísticas calculadas.
     """
     estadisticas = {}
-    
+
     for col in df.columns:
-        estadisticas[col] = {
-            "Longitud Promedio": df[col].apply(len).mean(),
-            "Datos Nulos": df[col].isnull().sum(),
-            "Cantidad de Palabras Promedio": df[col].apply(lambda x: len(x.split())).mean()
-        }
-    
+        if df[col].dtype == object:  # Verificar que la columna contiene texto
+            estadisticas[col] = {
+                "Longitud Promedio": df[col].dropna().apply(len).mean(),
+                "Datos Nulos": df[col].isnull().sum(),
+                "Cantidad de Palabras Promedio": df[col].dropna().apply(lambda x: len(x.split())).mean()
+            }
+
     return pd.DataFrame(estadisticas).transpose()
+
 
 def calcular_costo(tokens_entrada, tokens_salida, modelo):
     precios = {
@@ -700,9 +712,17 @@ def calcular_costo(tokens_entrada, tokens_salida, modelo):
         "gpt-4": {"entrada": 0.03, "salida": 0.06},
         "gpt-4-32k": {"entrada": 0.06, "salida": 0.12}
     }
+    
+    if modelo not in precios:
+        raise ValueError("Modelo no reconocido. Por favor, seleccione un modelo válido.")
+    
+    if tokens_entrada < 0 or tokens_salida < 0:
+        raise ValueError("El número de tokens debe ser un valor positivo.")
+    
     costo_entrada = tokens_entrada / 1000 * precios[modelo]["entrada"]
     costo_salida = tokens_salida / 1000 * precios[modelo]["salida"]
     return costo_entrada + costo_salida
+
 
 def estimar_tiempo_procesamiento(df, modelo_seleccionado):
     tiempo_por_token = 0.05  # 50 ms por token como suposición
@@ -718,4 +738,8 @@ def estimar_tiempo_procesamiento(df, modelo_seleccionado):
     factor_modelo = modelo_tiempos.get(modelo_seleccionado, 1)
     tiempo_estimado *= factor_modelo
 
+    if tiempo_estimado < 0:
+        raise ValueError("El tiempo estimado no puede ser negativo.")
+
     return tiempo_estimado / 60  # Convertir a minutos
+
