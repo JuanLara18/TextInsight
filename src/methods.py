@@ -270,26 +270,47 @@ def corregir_frases_por_lote(frases: List[str], sensibilidad: str, tamaño_lote=
     """Aplica la corrección a cada frase en la lista en lotes."""
     # Crea una lista para almacenar las frases corregidas
     frases_corregidas = []
-    
+
+    # Definir los detalles basados en la sensibilidad
+    if sensibilidad == "Leve":
+        detalle = "Realiza correcciones ortográficas y gramaticales mínimas."
+    elif sensibilidad == "Moderado":
+        detalle = "Realiza correcciones ortográficas y gramaticales moderadas."
+    elif sensibilidad == "Exhaustivo":
+        detalle = "Realiza correcciones ortográficas y gramaticales exhaustivas."
+    else:
+        detalle = "Realiza correcciones ortográficas y gramaticales."
+
     # Divide las frases en lotes
     for i in range(0, len(frases), tamaño_lote):
         lote = frases[i:i+tamaño_lote]
-        
+
         # Crea un prompt de lote con todas las frases en el lote
         if sensibilidad == "Ninguna":
             frases_corregidas.extend(lote)
         else:
-            lote_prompt = f"{detalle}\n\nContexto del Proyecto: {contexto}\n\n"
+            lote_prompt = f"""
+            Necesito tu ayuda para corregir una serie de textos que contienen respuestas a una pregunta abierta. Estos textos tienen errores ortográficos y gramaticales que quiero corregir antes de analizarlos para obtener insights. Por favor, realiza las siguientes tareas:
+    
+            1. **Corrección Ortográfica y Gramatical**: {detalle}
+            2. **Conservación del Sentido Original**: Asegúrate de que las correcciones no alteren el significado original de las respuestas.
+            3. **Formato**: Presenta cada texto corregido en un nuevo párrafo separado para mayor claridad.
+
+            Contexto del Proyecto: {contexto}
+
+            """
+
             for frase in lote:
                 lote_prompt += f"Corrige la siguiente frase: {frase}\n\n"
-            
+
             # Obtiene la respuesta del modelo para el lote
             respuesta_lote = generar_respuesta(modelo_seleccionado, lote_prompt)
-            
+
             # Divide la respuesta del lote en frases individuales y las añade a la lista de frases corregidas
             frases_corregidas.extend(respuesta_lote.split('\n'))
-    
+
     return frases_corregidas
+
 
 def corregir_y_procesar_datos(df: pd.DataFrame, sensibilidad: str, modelo_seleccionado: str, contexto: dict) -> pd.DataFrame:
     """
