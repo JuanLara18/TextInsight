@@ -488,14 +488,16 @@ def analisis_sentimientos_transformers(frases):
             '5 stars': 'Muy Positivo'
         }.get(resultado['label'], 'Neutro')  # Predeterminado a 'Neutro' si la etiqueta no coincide
         resultados_sentimientos.append({
+            'Frase': frase,  # Añadimos la frase original para referencia
             'Sentimiento': sentimiento,
             'Confiabilidad': resultado['score']
         })
-    return resultados_sentimientos
+    return pd.DataFrame(resultados_sentimientos)  # Devolver un DataFrame
+
 
 def mostrar_analisis_sentimientos(df):
     """
-    Muestra el análisis de sentimientos con un gráfico de distribución.
+    Muestra el análisis de sentimientos con un gráfico de distribución y un gráfico de promedio de confiabilidad por sentimiento.
     
     Args:
     - df: DataFrame con las frases corregidas.
@@ -509,61 +511,31 @@ def mostrar_analisis_sentimientos(df):
     # Reordenar las columnas para que 'Originales' aparezca primero
     df_sentimientos = df_sentimientos[['Originales', 'Sentimiento', 'Confiabilidad']]
     
+    # Actualizar el DataFrame corregido en el estado de sesión
+    st.session_state["corregidos_df"] = df_sentimientos
+    
     # Mostrar el DataFrame en Streamlit
     st.write(df_sentimientos)
     
     # Crear un gráfico de la distribución de sentimientos
-    plt.figure(figsize=(10, 6))
-    sns.countplot(data=df_sentimientos, x='Sentimiento', palette='viridis', order=['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
-    plt.title('Distribución de Sentimientos')
-    plt.xlabel('Sentimiento')
-    plt.ylabel('Frecuencia')
-    plt.xticks(rotation=45)
-    st.pyplot(plt)
+    fig_sentimientos, ax1 = plt.subplots(figsize=(10, 6))
+    sns.countplot(data=df_sentimientos, x='Sentimiento', palette='viridis', order=['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'], ax=ax1)
+    ax1.set_title('Distribución de Sentimientos')
+    ax1.set_xlabel('Sentimiento')
+    ax1.set_ylabel('Frecuencia')
+    ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45)
+    st.pyplot(fig_sentimientos)
 
     # Crear un gráfico de promedio de confiabilidad por sentimiento
-    plt.figure(figsize=(10, 6))
+    fig_confiabilidad, ax2 = plt.subplots(figsize=(10, 6))
     promedio_confiabilidad = df_sentimientos.groupby('Sentimiento')['Confiabilidad'].mean().reindex(['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
-    sns.barplot(x=promedio_confiabilidad.index, y=promedio_confiabilidad.values, palette='viridis')
-    plt.title('Promedio de Confiabilidad por Sentimiento')
-    plt.xlabel('Sentimiento')
-    plt.ylabel('Promedio de Confiabilidad')
-    plt.xticks(rotation=45)
-    st.pyplot(plt)
+    sns.barplot(x=promedio_confiabilidad.index, y=promedio_confiabilidad.values, palette='viridis', ax=ax2)
+    ax2.set_title('Promedio de Confiabilidad por Sentimiento')
+    ax2.set_xlabel('Sentimiento')
+    ax2.set_ylabel('Promedio de Confiabilidad')
+    ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45)
+    st.pyplot(fig_confiabilidad)
 
-
-def generar_grafico_sentimientos(df):
-    """
-    Genera un gráfico de la distribución de sentimientos a partir del DataFrame proporcionado.
-
-    Args:
-        df (pd.DataFrame): DataFrame que contiene los datos procesados.
-
-    Returns:
-        matplotlib.figure.Figure: Figura de Matplotlib con el gráfico generado.
-    """
-    fig, ax = plt.subplots(figsize=(10, 6))
-    # Asegúrate de que 'Sentimiento' exista en el DataFrame
-    if 'Sentimiento' not in df.columns:
-        raise ValueError("El DataFrame no contiene una columna llamada 'Sentimiento'")
-    
-    sns.countplot(data=df, x='Sentimiento', palette='viridis', order=['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'], ax=ax)
-    ax.set_title('Distribución de Sentimientos')
-    ax.set_xlabel('Sentimiento')
-    ax.set_ylabel('Frecuencia')
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-    return fig
-
-
-def generar_grafico_confiabilidad(df_sentimientos):
-    fig, ax = plt.subplots(figsize=(10, 6))
-    promedio_confiabilidad = df_sentimientos.groupby('Sentimiento')['Confiabilidad'].mean().reindex(['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
-    sns.barplot(x=promedio_confiabilidad.index, y=promedio_confiabilidad.values, palette='viridis', ax=ax)
-    ax.set_title('Promedio de Confiabilidad por Sentimiento')
-    ax.set_xlabel('Sentimiento')
-    ax.set_ylabel('Promedio de Confiabilidad')
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
-    return fig
 
 # Grafo ----------------------------------------------------------------
 

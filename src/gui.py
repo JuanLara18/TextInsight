@@ -222,10 +222,7 @@ def analysis_page():
             if st.button("Generar Análisis de Sentimientos"):
                 with st.spinner("Generando análisis de sentimientos..."):
                     mostrar_analisis_sentimientos(st.session_state.corregidos_df)
-                    fig_sentimientos = generar_grafico_sentimientos(st.session_state.corregidos_df)
-                    fig_confiabilidad = generar_grafico_confiabilidad(st.session_state.corregidos_df)
-                    st.pyplot(fig_sentimientos)
-                    st.pyplot(fig_confiabilidad)
+
 
         # Expander para el grafo de n-gramas
         with st.expander("Grafo"):
