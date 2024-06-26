@@ -243,9 +243,7 @@ def corregir_frase(frase: str, sensibilidad: str, modelo_seleccionado: str, cont
     
     1. **Corrección Ortográfica y Gramatical**: {detalle}
     2. **Conservación del Sentido Original**: Asegúrate de que las correcciones no alteren el significado original de las respuestas.
-    3. **Formato**: Presenta cada texto corregido en un nuevo párrafo separado para mayor claridad.
-    
-    Contexto del Proyecto: {contexto}
+    3. **Formato**: Presenta cada texto corregido entre los delimitadores <<< y >>> para mayor claridad.
     
     Aquí tienes los textos a corregir:
     
@@ -257,11 +255,16 @@ def corregir_frase(frase: str, sensibilidad: str, modelo_seleccionado: str, cont
     
     Ejemplo:
     Original: "Este es un texo de prueba."
-    Corregido: "Este es un texto de prueba."
+    Corregido: <<<Este es un texto de prueba.>>>
     """
 
     try:
         respuesta_corregida = generar_respuesta(modelo_seleccionado, prompt_correccion)
+        # Extraer la corrección entre <<< y >>>
+        inicio = respuesta_corregida.find("<<<") + 3
+        fin = respuesta_corregida.find(">>>")
+        if inicio != -1 and fin != -1:
+            respuesta_corregida = respuesta_corregida[inicio:fin].strip()
         return respuesta_corregida
     except Exception as e:
         raise RuntimeError(f"Error al corregir la frase: {e}")
@@ -270,45 +273,43 @@ def corregir_frases_por_lote(frases: List[str], sensibilidad: str, tamaño_lote=
     """Aplica la corrección a cada frase en la lista en lotes."""
     # Crea una lista para almacenar las frases corregidas
     frases_corregidas = []
-
-    # Definir los detalles basados en la sensibilidad
-    if sensibilidad == "Leve":
-        detalle = "Realiza correcciones ortográficas y gramaticales mínimas."
+    
+    # Definir el nivel de detalle según la sensibilidad
+    if sensibilidad == "Ninguna":
+        return frases  # No se realiza corrección
+    elif sensibilidad == "Leve":
+        detalle = "Realiza correcciones ortográficas básicas."
     elif sensibilidad == "Moderado":
-        detalle = "Realiza correcciones ortográficas y gramaticales moderadas."
+        detalle = "Realiza correcciones ortográficas y gramaticales, pero no cambies la estructura de las frases."
     elif sensibilidad == "Exhaustivo":
-        detalle = "Realiza correcciones ortográficas y gramaticales exhaustivas."
-    else:
-        detalle = "Realiza correcciones ortográficas y gramaticales."
-
+        detalle = "Realiza correcciones ortográficas, gramaticales y mejora la claridad y fluidez del texto."
+    
     # Divide las frases en lotes
     for i in range(0, len(frases), tamaño_lote):
         lote = frases[i:i+tamaño_lote]
-
+        
         # Crea un prompt de lote con todas las frases en el lote
         if sensibilidad == "Ninguna":
             frases_corregidas.extend(lote)
         else:
-            lote_prompt = f"""
-            Necesito tu ayuda para corregir una serie de textos que contienen respuestas a una pregunta abierta. Estos textos tienen errores ortográficos y gramaticales que quiero corregir antes de analizarlos para obtener insights. Por favor, realiza las siguientes tareas:
-    
-            1. **Corrección Ortográfica y Gramatical**: {detalle}
-            2. **Conservación del Sentido Original**: Asegúrate de que las correcciones no alteren el significado original de las respuestas.
-            3. **Formato**: Presenta cada texto corregido en un nuevo párrafo separado para mayor claridad.
-
-            Contexto del Proyecto: {contexto}
-
-            """
-
+            lote_prompt = f"{detalle}\n\nContexto del Proyecto: {contexto}\n\n"
             for frase in lote:
                 lote_prompt += f"Corrige la siguiente frase: {frase}\n\n"
-
+            
             # Obtiene la respuesta del modelo para el lote
             respuesta_lote = generar_respuesta(modelo_seleccionado, lote_prompt)
-
+            
             # Divide la respuesta del lote en frases individuales y las añade a la lista de frases corregidas
-            frases_corregidas.extend(respuesta_lote.split('\n'))
-
+            respuestas = respuesta_lote.split('\n')
+            for respuesta in respuestas:
+                inicio = respuesta.find("<<<") + 3
+                fin = respuesta.find(">>>")
+                if inicio != -1 and fin != -1:
+                    frase_corregida = respuesta[inicio:fin].strip()
+                    frases_corregidas.append(frase_corregida)
+                else:
+                    frases_corregidas.append(respuesta)
+    
     return frases_corregidas
 
 
@@ -536,6 +537,38 @@ def mostrar_analisis_sentimientos(df):
     ax2.set_xticklabels(ax2.get_xticklabels(), rotation=45)
     st.pyplot(fig_confiabilidad)
 
+def generar_grafico_sentimientos(df):
+    """
+    Genera un gráfico de la distribución de sentimientos a partir del DataFrame proporcionado.
+
+    Args:
+        df (pd.DataFrame): DataFrame que contiene los datos procesados.
+
+    Returns:
+        matplotlib.figure.Figure: Figura de Matplotlib con el gráfico generado.
+    """
+    fig, ax = plt.subplots(figsize=(10, 6))
+    # Asegúrate de que 'Sentimiento' exista en el DataFrame
+    if 'Sentimiento' not in df.columns:
+        raise ValueError("El DataFrame no contiene una columna llamada 'Sentimiento'")
+    
+    sns.countplot(data=df, x='Sentimiento', palette='viridis', order=['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'], ax=ax)
+    ax.set_title('Distribución de Sentimientos')
+    ax.set_xlabel('Sentimiento')
+    ax.set_ylabel('Frecuencia')
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+    return fig
+
+
+def generar_grafico_confiabilidad(df_sentimientos):
+    fig, ax = plt.subplots(figsize=(10, 6))
+    promedio_confiabilidad = df_sentimientos.groupby('Sentimiento')['Confiabilidad'].mean().reindex(['Muy Negativo', 'Negativo', 'Neutro', 'Positivo', 'Muy Positivo'])
+    sns.barplot(x=promedio_confiabilidad.index, y=promedio_confiabilidad.values, palette='viridis', ax=ax)
+    ax.set_title('Promedio de Confiabilidad por Sentimiento')
+    ax.set_xlabel('Sentimiento')
+    ax.set_ylabel('Promedio de Confiabilidad')
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+    return fig
 
 # Grafo ----------------------------------------------------------------
 
