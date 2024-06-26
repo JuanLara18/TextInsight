@@ -200,7 +200,34 @@ def normalizar_texto(texto: str) -> str:
     texto = re.sub(r'\s+', ' ', texto).strip()  # Eliminar espacios extras
     return texto
 
-def corregir_frase(frase, sensibilidad, modelo_seleccionado, contexto):
+def es_correccion_valida(original: str, corregido: str) -> bool:
+    """
+    Verifica si la corrección es válida, es decir, si no agrega elementos innecesarios y corrige de forma apropiada.
+    """
+    original_norm = normalizar_texto(original)
+    corregido_norm = normalizar_texto(corregido)
+
+    # Comprueba si se han realizado correcciones ortográficas y gramaticales sin añadir elementos adicionales
+    if corregido_norm == original_norm or '->' in corregido_norm:
+        return False
+    # Permite correcciones específicas como "q" por "que"
+    corregido_norm = corregido_norm.replace(" q ", " que ")
+    # Otras correcciones específicas podrían agregarse aquí
+    # ...
+
+    # Comparar la frase original y la corregida para validar la corrección
+    return corregido_norm != original_norm
+
+def corregir_y_validar_frase(frase: str, sensibilidad: str, modelo_seleccionado, contexto: str) -> str:
+    """
+    Corrige una frase, la valida y la normaliza.
+    """
+    respuesta_corregida = corregir_frase(frase, sensibilidad, modelo_seleccionado, contexto)
+    
+    # Si la corrección no es válida, se devuelve la frase original normalizada
+    return respuesta_corregida if es_correccion_valida(frase, respuesta_corregida) else normalizar_texto(frase)
+
+def corregir_frase(frase: str, sensibilidad: str, modelo_seleccionado: str, contexto: str) -> str:
     # Definir el nivel de detalle según la sensibilidad
     if sensibilidad == "Ninguna":
         return frase  # No se realiza corrección
@@ -239,40 +266,7 @@ def corregir_frase(frase, sensibilidad, modelo_seleccionado, contexto):
     except Exception as e:
         raise RuntimeError(f"Error al corregir la frase: {e}")
 
-
-def es_correccion_valida(original: str, corregido: str) -> bool:
-    """
-    Verifica si la corrección es válida, es decir, si no agrega elementos innecesarios y corrige de forma apropiada.
-    """
-    original_norm = normalizar_texto(original)
-    corregido_norm = normalizar_texto(corregido)
-
-    # Comprueba si se han realizado correcciones ortográficas y gramaticales sin añadir elementos adicionales
-    if corregido_norm == original_norm or '->' in corregido_norm:
-        return False
-    # Permite correcciones específicas como "q" por "que"
-    corregido_norm = corregido_norm.replace(" q ", " que ")
-    # Otras correcciones específicas podrían agregarse aquí
-    # ...
-
-    # Comparar la frase original y la corregida para validar la corrección
-    return corregido_norm != original_norm
-
-def corregir_y_validar_frase(frase: str, sensibilidad: str, modelo_seleccionado) -> str:
-    """
-    Corrige una frase, la valida y la normaliza.
-    """
-    respuesta_corregida = corregir_frase(frase, sensibilidad, modelo_seleccionado)
-    
-    # Si la corrección no es válida, se devuelve la frase original normalizada
-    return respuesta_corregida if es_correccion_valida(frase, respuesta_corregida) else normalizar_texto(frase)
-
-def corregir_frases(frases: List[str], sensibilidad: str) -> List[str]:
-    """Aplica corrección a cada frase en la lista basado en la sensibilidad."""
-    # Asegúrate de pasar el comando de sensibilidad a la función corregir_frase
-    return [corregir_frase(frase, sensibilidad) for frase in frases]
-
-def corregir_frases_por_lote(frases: List[str], sensibilidad: str, tamaño_lote=5, modelo_seleccionado="gpt-3.5-turbo") -> List[str]:
+def corregir_frases_por_lote(frases: List[str], sensibilidad: str, tamaño_lote=5, modelo_seleccionado="gpt-3.5-turbo", contexto: str = "") -> List[str]:
     """Aplica la corrección a cada frase en la lista en lotes."""
     # Crea una lista para almacenar las frases corregidas
     frases_corregidas = []
@@ -285,7 +279,9 @@ def corregir_frases_por_lote(frases: List[str], sensibilidad: str, tamaño_lote=
         if sensibilidad == "Ninguna":
             frases_corregidas.extend(lote)
         else:
-            lote_prompt = ' '.join([f"{comandos[sensibilidad]} Corrige la siguiente frase: {frase}" for frase in lote])
+            lote_prompt = f"{detalle}\n\nContexto del Proyecto: {contexto}\n\n"
+            for frase in lote:
+                lote_prompt += f"Corrige la siguiente frase: {frase}\n\n"
             
             # Obtiene la respuesta del modelo para el lote
             respuesta_lote = generar_respuesta(modelo_seleccionado, lote_prompt)
@@ -294,15 +290,6 @@ def corregir_frases_por_lote(frases: List[str], sensibilidad: str, tamaño_lote=
             frases_corregidas.extend(respuesta_lote.split('\n'))
     
     return frases_corregidas
-
-def generar_prompt_correccion(frase: str, nivel_sensibilidad: str) -> str:
-    comando = comandos.get(nivel_sensibilidad, "")
-    prompt = f"Realiza una corrección {nivel_sensibilidad.lower()} siguiendo estas instrucciones: {comando} \n Frase a corregir: '{frase}'. \n Presenta SOLAMENTE el texto corregido, no añadas respuesta, texto o símbolos a la respuesta, tampoco el punto final."
-    return prompt
-
-def sensibilidad_a_comando(sensibilidad: str) -> str:
-    """Convierte el nivel de sensibilidad en un comando específico para el modelo."""
-    return comandos.get(sensibilidad, "No se realizará ninguna corrección.")
 
 def corregir_y_procesar_datos(df: pd.DataFrame, sensibilidad: str, modelo_seleccionado: str, contexto: dict) -> pd.DataFrame:
     """
