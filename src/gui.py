@@ -176,8 +176,13 @@ def data_loading_page():
 def analysis_page():
     st.title("Análisis de Datos")
 
-    if st.session_state.corregidos_df is not None and 'Procesados' in st.session_state.corregidos_df.columns:
-        df = st.session_state.corregidos_df
+    if 'corregidos_df' in st.session_state and st.session_state['corregidos_df'] is not None:
+        df = st.session_state['corregidos_df']
+
+        # Verificar que la columna 'Procesados' exista
+        if 'Procesados' not in df.columns:
+            st.error("El DataFrame no contiene una columna llamada 'Procesados'. Asegúrate de haber procesado los datos correctamente.")
+            return
 
         # Expander para la nube de palabras
         with st.expander("Nube de Palabras"):
@@ -223,42 +228,45 @@ def analysis_page():
                 with st.spinner("Generando análisis de sentimientos..."):
                     mostrar_analisis_sentimientos(st.session_state.corregidos_df)
 
-
-        # Expander para el grafo de n-gramas
-        with st.expander("Grafo"):
-            st.markdown("Genera un grafo basado en los n-gramas para visualizar las relaciones entre las palabras en el texto. Esto puede revelar estructuras y patrones en el uso del lenguaje.")
-            n_value = st.number_input("Número de palabras a relacionar en el grafo", min_value=2, value=2, key='n_value_graph')
-            min_weight = st.slider("Selecciona el mínimo número de menciones para mostrar:", 1, 10, 2, key='min_weight_graph')
-            texto_procesado_para_grafo = st.session_state["corregidos_df"]['Procesados'].tolist()
-            tokens_entrada = len(' '.join(texto_procesado_para_grafo).split())
-            costo = 0  # No hay costo de API
-            tiempo_estimado = 0.2  # 2 minutos como tiempo constante estimado
-            st.write(f"El costo estimado es: ${costo:.4f}")
-            st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
-            if st.button("Generar Grafo"):
-                with st.spinner("Generando grafo..."):
-                    fig = generar_grafo(texto_procesado_para_grafo, n_value, min_weight)
-                    if fig is not None:  # Verificar que se haya generado el grafo
-                        st.pyplot(fig)
-                    else:
-                        st.write("No se generó ningún grafo. Intenta con un valor menor de n o ajusta el filtro de menciones.")
+        # # Expander para el grafo de n-gramas
+        # with st.expander("Grafo"):
+        #     st.markdown("Genera un grafo basado en los n-gramas para visualizar las relaciones entre las palabras en el texto. Esto puede revelar estructuras y patrones en el uso del lenguaje.")
+        #     n_value = st.number_input("Número de palabras a relacionar en el grafo", min_value=2, value=2, key='n_value_graph')
+        #     min_weight = st.slider("Selecciona el mínimo número de menciones para mostrar:", 1, 10, 2, key='min_weight_graph')
+        #     texto_procesado_para_grafo = df['Procesados'].tolist()
+        #     tokens_entrada = len(' '.join(texto_procesado_para_grafo).split())
+        #     costo = 0  # No hay costo de API
+        #     tiempo_estimado = 0.2  # 2 minutos como tiempo constante estimado
+        #     st.write(f"El costo estimado es: ${costo:.4f}")
+        #     st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
+        #     if st.button("Generar Grafo"):
+        #         with st.spinner("Generando grafo..."):
+        #             fig = generar_grafo(texto_procesado_para_grafo, n_value, min_weight)
+        #             if fig is not None:  # Verificar que se haya generado el grafo
+        #                 st.pyplot(fig)
+        #             else:
+        #                 st.write("No se generó ningún grafo. Intenta con un valor menor de n o ajusta el filtro de menciones.")
 
         # Expander para la generación de temas
         with st.expander("Temas"):
             st.markdown("Genera temas a partir del texto para agrupar los documentos en categorías significativas. Esto es útil para resumir grandes volúmenes de texto y entender mejor el contenido.")
             num_temas = st.number_input("Número de temas a generar:", min_value=1, value=5, step=1, key='num_temas')
-            todas_las_frases = " ".join(df['Corregidos'].tolist())
+            todas_las_frases = ' '.join(st.session_state["corregidos_df"]['Corregidos'].tolist())
             tokens_entrada = len(todas_las_frases.split())
             tokens_salida = tokens_entrada  # Suponemos que la salida tiene la misma longitud que la entrada
             costo = calcular_costo(tokens_entrada, tokens_salida, st.session_state["modelo_seleccionado"])
-            tiempo_estimado = estimar_tiempo_procesamiento(df, st.session_state["modelo_seleccionado"])
+            tiempo_estimado = estimar_tiempo_procesamiento(st.session_state["corregidos_df"], st.session_state["modelo_seleccionado"])
             st.write(f"El costo estimado es: ${costo:.4f}")
             st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Generar Temas"):
                 with st.spinner("Generando temas..."):
-                    df_temas = generar_temas(todas_las_frases, num_temas, st.session_state["modelo_seleccionado"])
-                    st.session_state['df_temas'] = df_temas
-                    st.dataframe(df_temas)
+                    try:
+                        df_temas = generar_temas(todas_las_frases, num_temas, st.session_state["modelo_seleccionado"])
+                        st.session_state['df_temas'] = df_temas
+                        st.dataframe(df_temas)
+                    except ValueError as e:
+                        st.error(f"Error al generar temas: {e}")
+
 
     else:
         st.write("Por favor, carga y procesa los datos en la pestaña 'Taller de Datos' antes de continuar con el análisis.")

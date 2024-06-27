@@ -395,7 +395,7 @@ def show_analysis(df):
     estadisticas = calcular_estadisticas(df)
     st.write(estadisticas)
     st.markdown("- **Longitud Promedio de los Textos**: Muestra la longitud promedio de los textos en cada columna. Esto puede ayudar a entender la complejidad y la extensión del contenido procesado.")
-    st.markdown("- **Datos Nulos**: Indica la cantidad de valores nulos en cada columna. Es importante asegurarse de que no haya demasiados datos faltantes, ya que esto puede afectar la calidad del análisis.")
+    #st.markdown("- **Datos Nulos**: Indica la cantidad de valores nulos en cada columna. Es importante asegurarse de que no haya demasiados datos faltantes, ya que esto puede afectar la calidad del análisis.")
     st.markdown("- **Cantidad de Palabras Promedio**: Muestra la cantidad promedio de palabras en los textos de cada columna. Esto puede dar una idea de la densidad informativa de los textos.")
 
     # Cuadro de métricas
@@ -453,19 +453,96 @@ def generate_wordcloud(frases: List[str]):
 
 # Generación de temas ---------------------------------------------------
 
+def obtener_temas_principales(texto: str, n_temas: int, modelo: str) -> dict:
+    prompt = f"""
+    Analiza el siguiente texto y define {n_temas} temas principales. Coloca cada tema entre caracteres especiales #:
+    ---
+    {texto}
+    ---
+    """
+    respuesta_chatgpt = generar_respuesta(modelo, prompt, max_tokens=1024)
+    temas = [tema.strip() for tema in respuesta_chatgpt.split('#') if tema.strip()]
+    
+    if len(temas) < n_temas:
+        temas += [f"Tema {i+1}" for i in range(len(temas), n_temas)]
+    
+    temas_dict = {i+1: temas[i] for i in range(n_temas)}
+    return temas_dict
+
+def asignar_temas_a_frases(frases: list, temas_dict: dict, modelo: str) -> list:
+    temas = ', '.join([f"{i}: {tema}" for i, tema in temas_dict.items()])
+    prompt = f"""
+    A continuación se presenta una lista de temas y una lista de frases. Para cada frase, indica el número del tema más relevante.
+    Temas: {temas}
+    
+    Frases:
+    ---
+    {' '.join(frases)}
+    ---
+    """
+    respuesta_chatgpt = generar_respuesta(modelo, prompt, max_tokens=1024)
+    
+    temas_asignados = [tema.strip() for tema in respuesta_chatgpt.split('\n') if tema.strip()]
+    
+    # Asegurarse de que la longitud de temas asignados coincida con la longitud de frases
+    if len(temas_asignados) != len(frases):
+        temas_asignados = ['Tema no asignado'] * len(frases)
+    
+    return temas_asignados
+
 def generar_temas(texto: str, n_temas: int, modelo: str) -> pd.DataFrame:
     """
     Interactúa con ChatGPT para definir n temas basados en el texto dado
     y asigna un tema a cada frase del texto.
     """
-    prompt = f"Por favor, analiza el siguiente texto y define {n_temas} temas principales:\n{texto}"
-    respuesta_chatgpt = generar_respuesta(modelo, prompt, max_tokens=1024)
+    # Dividir el texto en frases
+    frases = texto.split('. ')
+    print(f"Frases: {frases}")
+    print(f"Número de frases: {len(frases)}")
     
-    temas = respuesta_chatgpt.split(',')
+    # Crear el primer prompt para definir los temas
+    prompt_temas = f"Por favor, analiza el siguiente texto y define {n_temas} temas principales, separándolos con comas:\n{texto}"
+    respuesta_chatgpt_temas = generar_respuesta(modelo, prompt_temas, max_tokens=1024)
+    print(f"Respuesta de temas: {respuesta_chatgpt_temas}")
+    
+    # Extraer los temas de la respuesta
+    temas = [tema.strip() for tema in respuesta_chatgpt_temas.split(',')]
     if len(temas) < n_temas:
         temas += ['Tema no especificado'] * (n_temas - len(temas))
+    print(f"Temas: {temas}")
     
-    df_temas = pd.DataFrame({'Frase': texto.split('. '), 'Tema': [temas[i % n_temas] for i in range(len(texto.split('. ')))]})
+    # Crear un diccionario de temas
+    diccionario_temas = {i + 1: temas[i] for i in range(n_temas)}
+    print(f"Diccionario de temas: {diccionario_temas}")
+    
+    # Crear el segundo prompt para asignar temas a las frases
+    prompt_asignacion = f"Aquí tienes los temas definidos:\n{diccionario_temas}\n\nAsigna un tema a cada una de las siguientes frases proporcionando el número del tema correspondiente:\n"
+    for i, frase in enumerate(frases):
+        prompt_asignacion += f"{i + 1}. {frase}\n"
+    
+    respuesta_chatgpt_asignacion = generar_respuesta(modelo, prompt_asignacion, max_tokens=1024)
+    print(f"Respuesta de asignación de temas: {respuesta_chatgpt_asignacion}")
+    
+    # Extraer los temas asignados de la respuesta
+    temas_asignados = []
+    for linea in respuesta_chatgpt_asignacion.split('\n'):
+        if linea.strip():
+            try:
+                tema_numero = int(linea.split('.')[0].strip())
+                tema = diccionario_temas.get(tema_numero, 'Tema no asignado')
+                temas_asignados.append(tema)
+            except (ValueError, KeyError):
+                temas_asignados.append('Tema no asignado')
+    print(f"Temas asignados: {temas_asignados}")
+    
+    # Asegurarse de que las listas de frases y temas asignados tengan la misma longitud
+    if len(temas_asignados) < len(frases):
+        temas_asignados += ['Tema no asignado'] * (len(frases) - len(temas_asignados))
+    print(f"Longitud de frases: {len(frases)}, Longitud de temas asignados: {len(temas_asignados)}")
+    
+    # Crear el DataFrame final
+    df_temas = pd.DataFrame({'Frase': frases, 'Tema': temas_asignados})
+    print(f"DataFrame final:\n{df_temas}")
     return df_temas
 
 # Sentimientos ---------------------------------------------------------
@@ -489,7 +566,6 @@ def analisis_sentimientos_transformers(frases):
             'Confiabilidad': resultado['score']
         })
     return pd.DataFrame(resultados_sentimientos)  # Devolver un DataFrame
-
 
 def mostrar_analisis_sentimientos(df):
     """
@@ -567,61 +643,40 @@ def generar_grafico_confiabilidad(df_sentimientos):
 # Grafo ----------------------------------------------------------------
 
 def ngramas_a_grafo(frases_procesadas, n, min_weight=1):
-    """Genera un grafo a partir de los n-gramas de las frases procesadas."""
+    """
+    Genera un grafo a partir de los n-gramas de las frases procesadas.
+    
+    Args:
+    - frases_procesadas: Lista de frases procesadas.
+    - n: Número de palabras en cada n-grama.
+    - min_weight: Peso mínimo para incluir un n-grama en el grafo.
+    
+    Returns:
+    - G: Grafo generado a partir de los n-gramas.
+    """
     tokens = [token for frase in frases_procesadas for token in frase.split()]
     n_grams = list(ngrams(tokens, n))
     n_grams_counts = Counter(n_grams)
-    
+
     G = nx.Graph()
-    
+
     for ngrama, frecuencia in n_grams_counts.items():
         if frecuencia >= min_weight:  # Filtrar por frecuencia
             for i in range(len(ngrama) - 1):
-                if not G.has_edge(ngrama[i], ngrama[i + 1]):
-                    G.add_edge(ngrama[i], ngrama[i + 1], weight=0)
-                G[ngrama[i]][ngrama[i + 1]]['weight'] += frecuencia
+                G.add_edge(ngrama[i], ngrama[i + 1], weight=frecuencia)
     
     return G
 
 def generar_grafo(texto_procesado_para_grafo, n_value, min_weight):
-    """
-    Genera un gráfico de un grafo basado en los n-gramas del texto procesado.
-
-    Args:
-        texto_procesado_para_grafo (list): Lista de frases procesadas.
-        n_value (int): Número de palabras a relacionar en el grafo.
-        min_weight (int): Mínimo número de menciones para mostrar en el grafo.
-
-    Returns:
-        matplotlib.figure.Figure: Figura de Matplotlib con el grafo generado.
-    """
-    # Generar el grafo a partir de los n-gramas
     G = ngramas_a_grafo(texto_procesado_para_grafo, n_value, min_weight)
-    
-    # Verificar que el grafo no esté vacío
-    if G.number_of_nodes() > 0:
-        # Crear la figura y el eje para el gráfico
+    if G.number_of_nodes() > 0:  # Verificar que el grafo no esté vacío
         fig, ax = plt.subplots(figsize=(10, 10))
-        
-        # Obtener las posiciones de los nodos utilizando el layout de spring
         pos = nx.spring_layout(G)
-        
-        # Dibujar los nodos del grafo
         nx.draw_networkx_nodes(G, pos, ax=ax, node_size=500, node_color='skyblue')
-        
-        # Dibujar las etiquetas de los nodos
         nx.draw_networkx_labels(G, pos, ax=ax)
-        
-        # Dibujar las aristas del grafo con pesos escalados
-        edges = nx.draw_networkx_edges(
-            G, pos, ax=ax, 
-            width=[d['weight']*0.1 for (u, v, d) in G.edges(data=True)]
-        )
-        
-        # Configurar el título del gráfico y ocultar los ejes
+        edges = nx.draw_networkx_edges(G, pos, ax=ax, width=[d['weight'] * 0.1 for (u, v, d) in G.edges(data=True)])
         plt.title("Grafo de N-Gramas")
         plt.axis('off')
-        
         return fig
     else:
         return None
@@ -731,7 +786,7 @@ def calcular_estadisticas(df):
         if df[col].dtype == object:  # Verificar que la columna contiene texto
             estadisticas[col] = {
                 "Longitud Promedio": df[col].dropna().apply(len).mean(),
-                "Datos Nulos": df[col].isnull().sum(),
+                #"Datos Nulos": df[col].isnull().sum(),
                 "Cantidad de Palabras Promedio": df[col].dropna().apply(lambda x: len(x.split())).mean()
             }
 
