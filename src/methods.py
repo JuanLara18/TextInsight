@@ -490,23 +490,34 @@ def asignar_temas_a_frases(frases: list, temas_dict: dict, modelo: str) -> list:
     
     return temas_asignados
 
-def generar_temas(texto: str, n_temas: int, modelo: str) -> pd.DataFrame:
+def generar_temas(texto: str, n_temas: int, modelo: str, contexto: str = "") -> pd.DataFrame:
     """
     Interactúa con ChatGPT para definir n temas basados en el texto dado
     y asigna un tema a cada frase del texto.
     """
-    # Dividir el texto en frases
-    frases = texto.split('. ')
+    # Dividir el texto en frases utilizando una expresión regular
+    frases = re.split(r'\.|\?|\!', texto)
+    frases = [frase.strip() for frase in frases if frase.strip()]
     print(f"Frases: {frases}")
     print(f"Número de frases: {len(frases)}")
     
     # Crear el primer prompt para definir los temas
-    prompt_temas = f"Por favor, analiza el siguiente texto y define {n_temas} temas principales, separándolos con comas:\n{texto}"
+    prompt_temas = f"""
+    Utilizando el siguiente contexto del proyecto, define {n_temas} temas principales y colócalos entre <<< y >>>:
+
+    Contexto del Proyecto: {contexto}
+    
+    Texto:
+    {texto}
+    
+    Responde de la siguiente manera:
+    <<<Tema 1>>>, <<<Tema 2>>>, ..., <<<Tema {n_temas}>>>
+    """
     respuesta_chatgpt_temas = generar_respuesta(modelo, prompt_temas, max_tokens=1024)
     print(f"Respuesta de temas: {respuesta_chatgpt_temas}")
     
     # Extraer los temas de la respuesta
-    temas = [tema.strip() for tema in respuesta_chatgpt_temas.split(',')]
+    temas = re.findall(r'<<<(.*?)>>>', respuesta_chatgpt_temas)
     if len(temas) < n_temas:
         temas += ['Tema no especificado'] * (n_temas - len(temas))
     print(f"Temas: {temas}")
@@ -516,7 +527,13 @@ def generar_temas(texto: str, n_temas: int, modelo: str) -> pd.DataFrame:
     print(f"Diccionario de temas: {diccionario_temas}")
     
     # Crear el segundo prompt para asignar temas a las frases
-    prompt_asignacion = f"Aquí tienes los temas definidos:\n{diccionario_temas}\n\nAsigna un tema a cada una de las siguientes frases proporcionando el número del tema correspondiente:\n"
+    prompt_asignacion = f"""
+    Aquí tienes los temas definidos:
+
+    {diccionario_temas}
+
+    Asigna un tema a cada una de las siguientes frases proporcionando el número del tema correspondiente y coloca el número entre <<< y >>>:
+    """
     for i, frase in enumerate(frases):
         prompt_asignacion += f"{i + 1}. {frase}\n"
     
@@ -528,10 +545,10 @@ def generar_temas(texto: str, n_temas: int, modelo: str) -> pd.DataFrame:
     for linea in respuesta_chatgpt_asignacion.split('\n'):
         if linea.strip():
             try:
-                tema_numero = int(linea.split('.')[0].strip())
+                tema_numero = int(re.search(r'<<<(\d+)>>>', linea).group(1))
                 tema = diccionario_temas.get(tema_numero, 'Tema no asignado')
                 temas_asignados.append(tema)
-            except (ValueError, KeyError):
+            except (AttributeError, ValueError, KeyError):
                 temas_asignados.append('Tema no asignado')
     print(f"Temas asignados: {temas_asignados}")
     
