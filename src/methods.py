@@ -3,10 +3,13 @@
 # Importaciones de bibliotecas estándar
 import re
 import io
-import os
 import unicodedata
 from collections import Counter
 from typing import List
+
+import openai
+import os
+from dotenv import load_dotenv
 
 # Importaciones de bibliotecas externas
 import matplotlib.pyplot as plt
@@ -453,6 +456,20 @@ def generate_wordcloud(frases: List[str]):
 
 # Generación de temas ---------------------------------------------------
 
+def cargar_frases(ruta_archivo: str) -> str:
+    """
+    Carga las frases desde un archivo de texto.
+
+    Args:
+    - ruta_archivo (str): Ruta al archivo de texto que contiene las frases.
+
+    Returns:
+    - str: Contenido del archivo como una sola cadena de texto.
+    """
+    with open(ruta_archivo, 'r', encoding='utf-8') as file:
+        contenido = file.read().strip()
+    return contenido
+
 def obtener_temas_principales(texto: str, n_temas: int, modelo: str) -> dict:
     prompt = f"""
     Analiza el siguiente texto y define {n_temas} temas principales. Coloca cada tema entre caracteres especiales #:
@@ -490,77 +507,85 @@ def asignar_temas_a_frases(frases: list, temas_dict: dict, modelo: str) -> list:
     
     return temas_asignados
 
-def generar_temas(texto: str, n_temas: int, modelo: str, contexto: str = "") -> pd.DataFrame:
-    """
-    Interactúa con ChatGPT para definir n temas basados en el texto dado
-    y asigna un tema a cada frase del texto.
-    """
-    # Dividir el texto en frases utilizando una expresión regular
-    frases = re.split(r'\.|\?|\!', texto)
-    frases = [frase.strip() for frase in frases if frase.strip()]
-    print(f"Frases: {frases}")
-    print(f"Número de frases: {len(frases)}")
-    
-    # Crear el primer prompt para definir los temas
-    prompt_temas = f"""
-    Utilizando el siguiente contexto del proyecto, define {n_temas} temas principales y colócalos entre <<< y >>>:
 
+import openai
+import pandas as pd
+
+def generar_respuesta(modelo, prompt, max_tokens=512):
+    try:
+        response = openai.ChatCompletion.create(
+            model=modelo,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens
+        )
+        return response.choices[0].message['content'].strip()
+    except Exception as e:
+        raise RuntimeError(f"Error al generar respuesta del modelo: {e}")
+
+def obtener_temas(texto, n_temas, modelo, contexto):
+    prompt_temas = f"""
+    Necesito tu ayuda para analizar el siguiente texto y definir {n_temas} temas principales. 
     Contexto del Proyecto: {contexto}
-    
-    Texto:
+    Aquí tienes el texto:
+
     {texto}
-    
-    Responde de la siguiente manera:
-    <<<Tema 1>>>, <<<Tema 2>>>, ..., <<<Tema {n_temas}>>>
+
+    Por favor, devuelve los temas principales entre <<< >>> en formato:
+    1. <<<Tema 1>>>
+    2. <<<Tema 2>>>
+    3. <<<Tema 3>>>
+    ...
     """
-    respuesta_chatgpt_temas = generar_respuesta(modelo, prompt_temas, max_tokens=1024)
-    print(f"Respuesta de temas: {respuesta_chatgpt_temas}")
+    respuesta_temas = generar_respuesta(modelo, prompt_temas)
+    print(f"Respuesta de temas: {respuesta_temas}")
     
-    # Extraer los temas de la respuesta
-    temas = re.findall(r'<<<(.*?)>>>', respuesta_chatgpt_temas)
-    if len(temas) < n_temas:
-        temas += ['Tema no especificado'] * (n_temas - len(temas))
+    temas = [tema.strip() for tema in respuesta_temas.split('>>>') if '<<<' in tema]
+    temas = [tema.replace('<<<', '').replace('>>>', '').strip() for tema in temas]
     print(f"Temas: {temas}")
     
-    # Crear un diccionario de temas
-    diccionario_temas = {i + 1: temas[i] for i in range(n_temas)}
-    print(f"Diccionario de temas: {diccionario_temas}")
-    
-    # Crear el segundo prompt para asignar temas a las frases
-    prompt_asignacion = f"""
-    Aquí tienes los temas definidos:
+    temas_dict = {i+1: tema for i, tema in enumerate(temas)}
+    print(f"Diccionario de temas: {temas_dict}")
+    return temas_dict
 
-    {diccionario_temas}
-
-    Asigna un tema a cada una de las siguientes frases proporcionando el número del tema correspondiente y coloca el número entre <<< y >>>:
-    """
-    for i, frase in enumerate(frases):
-        prompt_asignacion += f"{i + 1}. {frase}\n"
-    
-    respuesta_chatgpt_asignacion = generar_respuesta(modelo, prompt_asignacion, max_tokens=1024)
-    print(f"Respuesta de asignación de temas: {respuesta_chatgpt_asignacion}")
-    
-    # Extraer los temas asignados de la respuesta
+def asignar_temas(frases, temas_dict, modelo, contexto):
     temas_asignados = []
-    for linea in respuesta_chatgpt_asignacion.split('\n'):
-        if linea.strip():
-            try:
-                tema_numero = int(re.search(r'<<<(\d+)>>>', linea).group(1))
-                tema = diccionario_temas.get(tema_numero, 'Tema no asignado')
-                temas_asignados.append(tema)
-            except (AttributeError, ValueError, KeyError):
-                temas_asignados.append('Tema no asignado')
+    for frase in frases:
+        prompt_asignacion = f"""
+        Contexto del Proyecto: {contexto}
+        Temas disponibles:
+        {', '.join([f"{num}: {tema}" for num, tema in temas_dict.items()])}
+
+        Frase: {frase}
+        
+        Asigna el tema más relevante a la frase. Devuelve solo el número del tema en formato <<<n>>>.
+        """
+        respuesta_asignacion = generar_respuesta(modelo, prompt_asignacion)
+        print(f"Respuesta de asignación de temas: {respuesta_asignacion}")
+
+        try:
+            tema_num = int(respuesta_asignacion.split('<<<')[1].split('>>>')[0].strip())
+            tema_asignado = temas_dict.get(tema_num, "Tema no asignado")
+        except (IndexError, ValueError):
+            tema_asignado = "Tema no asignado"
+        
+        temas_asignados.append(tema_asignado)
     print(f"Temas asignados: {temas_asignados}")
+    return temas_asignados
+
+def generar_temas(texto, n_temas, modelo, contexto):
+    frases = [frase.strip() for frase in texto.split('\n') if frase.strip()]
+    print(f"Frases: {frases}")
+    print(f"Número de frases: {len(frases)}")
+
+    temas_dict = obtener_temas(texto, n_temas, modelo, contexto)
+    temas_asignados = asignar_temas(frases, temas_dict, modelo, contexto)
+
+    if len(frases) != len(temas_asignados):
+        raise ValueError("Las longitudes de las frases y los temas asignados no coinciden.")
     
-    # Asegurarse de que las listas de frases y temas asignados tengan la misma longitud
-    if len(temas_asignados) < len(frases):
-        temas_asignados += ['Tema no asignado'] * (len(frases) - len(temas_asignados))
-    print(f"Longitud de frases: {len(frases)}, Longitud de temas asignados: {len(temas_asignados)}")
-    
-    # Crear el DataFrame final
     df_temas = pd.DataFrame({'Frase': frases, 'Tema': temas_asignados})
-    print(f"DataFrame final:\n{df_temas}")
     return df_temas
+
 
 # Sentimientos ---------------------------------------------------------
 

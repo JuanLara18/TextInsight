@@ -247,26 +247,23 @@ def analysis_page():
         #             else:
         #                 st.write("No se generó ningún grafo. Intenta con un valor menor de n o ajusta el filtro de menciones.")
 
+        
         # Expander para la generación de temas
         with st.expander("Temas"):
             st.markdown("Genera temas a partir del texto para agrupar los documentos en categorías significativas. Esto es útil para resumir grandes volúmenes de texto y entender mejor el contenido.")
             num_temas = st.number_input("Número de temas a generar:", min_value=1, value=5, step=1, key='num_temas')
-            todas_las_frases = ' '.join(st.session_state["corregidos_df"]['Corregidos'].tolist())
+            todas_las_frases = " ".join(df['Corregidos'].tolist())
             tokens_entrada = len(todas_las_frases.split())
             tokens_salida = tokens_entrada  # Suponemos que la salida tiene la misma longitud que la entrada
             costo = calcular_costo(tokens_entrada, tokens_salida, st.session_state["modelo_seleccionado"])
-            tiempo_estimado = estimar_tiempo_procesamiento(st.session_state["corregidos_df"], st.session_state["modelo_seleccionado"])
+            tiempo_estimado = estimar_tiempo_procesamiento(df, st.session_state["modelo_seleccionado"])
             st.write(f"El costo estimado es: ${costo:.4f}")
             st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Generar Temas"):
                 with st.spinner("Generando temas..."):
-                    try:
-                        df_temas = generar_temas(todas_las_frases, num_temas, st.session_state["modelo_seleccionado"])
-                        st.session_state['df_temas'] = df_temas
-                        st.dataframe(df_temas)
-                    except ValueError as e:
-                        st.error(f"Error al generar temas: {e}")
-
+                    df_temas = generar_temas(todas_las_frases, num_temas, st.session_state["modelo_seleccionado"], contexto=st.session_state.get('proyecto_contexto', ''))
+                    st.session_state['df_temas'] = df_temas
+                    st.dataframe(df_temas)
 
     else:
         st.write("Por favor, carga y procesa los datos en la pestaña 'Taller de Datos' antes de continuar con el análisis.")
