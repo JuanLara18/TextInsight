@@ -6,6 +6,7 @@ import io
 import unicodedata
 from collections import Counter
 from typing import List
+import random
 
 import openai
 import os
@@ -470,50 +471,20 @@ def cargar_frases(ruta_archivo: str) -> str:
         contenido = file.read().strip()
     return contenido
 
-def obtener_temas_principales(texto: str, n_temas: int, modelo: str) -> dict:
-    prompt = f"""
-    Analiza el siguiente texto y define {n_temas} temas principales. Coloca cada tema entre caracteres especiales #:
-    ---
-    {texto}
-    ---
-    """
-    respuesta_chatgpt = generar_respuesta(modelo, prompt, max_tokens=1024)
-    temas = [tema.strip() for tema in respuesta_chatgpt.split('#') if tema.strip()]
-    
-    if len(temas) < n_temas:
-        temas += [f"Tema {i+1}" for i in range(len(temas), n_temas)]
-    
-    temas_dict = {i+1: temas[i] for i in range(n_temas)}
-    return temas_dict
+def obtener_temas(texto, n_temas, modelo, contexto, max_frases=100):
+    frases = [frase.strip() for frase in texto.split('\n') if frase.strip()]
+    print(f"Total de frases: {len(frases)}")
 
-def asignar_temas_a_frases(frases: list, temas_dict: dict, modelo: str) -> list:
-    temas = ', '.join([f"{i}: {tema}" for i, tema in temas_dict.items()])
-    prompt = f"""
-    A continuación se presenta una lista de temas y una lista de frases. Para cada frase, indica el número del tema más relevante.
-    Temas: {temas}
-    
-    Frases:
-    ---
-    {' '.join(frases)}
-    ---
-    """
-    respuesta_chatgpt = generar_respuesta(modelo, prompt, max_tokens=1024)
-    
-    temas_asignados = [tema.strip() for tema in respuesta_chatgpt.split('\n') if tema.strip()]
-    
-    # Asegurarse de que la longitud de temas asignados coincida con la longitud de frases
-    if len(temas_asignados) != len(frases):
-        temas_asignados = ['Tema no asignado'] * len(frases)
-    
-    return temas_asignados
+    if len(frases) > max_frases:
+        frases = random.sample(frases, max_frases)
+        print(f"Frases seleccionadas aleatoriamente: {len(frases)}")
 
-def obtener_temas(texto, n_temas, modelo, contexto):
     prompt_temas = f"""
-    Necesito tu ayuda para analizar el siguiente texto y definir {n_temas} temas principales, solamente {n_temas}, adicional quiero que sean temas claros, sintéticos y que clasifiquen muy bien las ideas generales del texto a clasificar.
+    Necesito tu ayuda para analizar el siguiente texto y definir {n_temas} temas principales. 
     Contexto del Proyecto: {contexto}
     Aquí tienes el texto:
 
-    {texto}
+    {' '.join(frases)}
 
     Por favor, devuelve los temas principales entre <<< >>>, uno por línea. Ejemplo:
     <<<Tema 1>>>
@@ -531,7 +502,7 @@ def obtener_temas(texto, n_temas, modelo, contexto):
     print(f"Diccionario de temas: {temas_dict}")
     return temas_dict
 
-def asignar_temas(frases, temas_dict, modelo, contexto):
+def asignar_temas(frases, temas_dict, modelo):
     temas_asignados = []
     for frase in frases:
         prompt_asignacion = f"""
@@ -561,14 +532,13 @@ def generar_temas(texto, n_temas, modelo, contexto):
     print(f"Número de frases: {len(frases)}")
 
     temas_dict = obtener_temas(texto, n_temas, modelo, contexto)
-    temas_asignados = asignar_temas(frases, temas_dict, modelo, contexto)
+    temas_asignados = asignar_temas(frases, temas_dict, modelo)
 
     if len(frases) != len(temas_asignados):
         raise ValueError("Las longitudes de las frases y los temas asignados no coinciden.")
     
     df_temas = pd.DataFrame({'Frase': frases, 'Tema': temas_asignados})
     return df_temas
-
 
 # Sentimientos ---------------------------------------------------------
 
