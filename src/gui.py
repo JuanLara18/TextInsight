@@ -252,7 +252,7 @@ def analysis_page():
         with st.expander("Temas"):
             st.markdown("Genera temas a partir del texto para agrupar los documentos en categorías significativas. Esto es útil para resumir grandes volúmenes de texto y entender mejor el contenido.")
             num_temas = st.number_input("Número de temas a generar:", min_value=1, value=5, step=1, key='num_temas')
-            todas_las_frases = " ".join(df['Corregidos'].tolist())
+            todas_las_frases = "\n".join(df['Corregidos'].tolist())
             tokens_entrada = len(todas_las_frases.split())
             tokens_salida = tokens_entrada  # Suponemos que la salida tiene la misma longitud que la entrada
             costo = calcular_costo(tokens_entrada, tokens_salida, st.session_state["modelo_seleccionado"])
@@ -261,10 +261,11 @@ def analysis_page():
             st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
             if st.button("Generar Temas"):
                 with st.spinner("Generando temas..."):
-                    df_temas = generar_temas(todas_las_frases, num_temas, st.session_state["modelo_seleccionado"], contexto=st.session_state.get('proyecto_contexto', ''))
-                    st.session_state['df_temas'] = df_temas
+                    df_temas = generar_temas(todas_las_frases, num_temas, st.session_state["modelo_seleccionado"], contexto="")
+                    temas_frecuencias = df_temas['Tema'].value_counts().reset_index()
+                    temas_frecuencias.columns = ['Tema', 'Frecuencia']
+                    st.dataframe(temas_frecuencias)
                     st.dataframe(df_temas)
-
     else:
         st.write("Por favor, carga y procesa los datos en la pestaña 'Taller de Datos' antes de continuar con el análisis.")
 
