@@ -1,6 +1,6 @@
 # src/gui.py
 import streamlit as st
-
+import pandas as pd
 from .methods import (
     calcular_costo,
     calculate_top_n_grams,
@@ -47,7 +47,7 @@ def welcome_page():
     # Genera y muestra el gráfico comparativo de los modelos
     plt = generar_grafico_comparativo()
     st.pyplot(plt)
-    
+
 def framework_project():
     st.title("Marco del Proyecto")
     
@@ -147,7 +147,6 @@ def data_loading_page():
                 costo = calcular_costo(tokens_entrada, tokens_salida, st.session_state["modelo_seleccionado"])
                 tiempo_estimado = estimar_tiempo_procesamiento(st.session_state["df"], st.session_state["modelo_seleccionado"])
             
-
         with col2:
             st.write(f"El costo estimado es: ${costo:.4f}")
             st.write(f"El tiempo estimado es: {tiempo_estimado:.2f} minutos")
@@ -172,6 +171,7 @@ def data_loading_page():
             # Mostrar análisis basado en una condición más relevante, como si 'Procesados' existe
             if 'Procesados' in st.session_state.corregidos_df.columns:
                 show_analysis(st.session_state["corregidos_df"])
+
 
 def analysis_page():
     st.title("Análisis de Datos")
@@ -268,6 +268,8 @@ def analysis_page():
                     st.dataframe(df_temas)
     else:
         st.write("Por favor, carga y procesa los datos en la pestaña 'Taller de Datos' antes de continuar con el análisis.")
+
+
 
 def export_page():
     st.title("Exportar Resultados")
