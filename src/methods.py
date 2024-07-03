@@ -507,40 +507,24 @@ def asignar_temas_a_frases(frases: list, temas_dict: dict, modelo: str) -> list:
     
     return temas_asignados
 
-
-import openai
-import pandas as pd
-
-def generar_respuesta(modelo, prompt, max_tokens=512):
-    try:
-        response = openai.ChatCompletion.create(
-            model=modelo,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens
-        )
-        return response.choices[0].message['content'].strip()
-    except Exception as e:
-        raise RuntimeError(f"Error al generar respuesta del modelo: {e}")
-
 def obtener_temas(texto, n_temas, modelo, contexto):
     prompt_temas = f"""
-    Necesito tu ayuda para analizar el siguiente texto y definir {n_temas} temas principales. 
+    Necesito tu ayuda para analizar el siguiente texto y definir {n_temas} temas principales, solamente {n_temas}, adicional quiero que sean temas claros, sintéticos y que clasifiquen muy bien las ideas generales del texto a clasificar.
     Contexto del Proyecto: {contexto}
     Aquí tienes el texto:
 
     {texto}
 
-    Por favor, devuelve los temas principales entre <<< >>> en formato:
-    1. <<<Tema 1>>>
-    2. <<<Tema 2>>>
-    3. <<<Tema 3>>>
+    Por favor, devuelve los temas principales entre <<< >>>, uno por línea. Ejemplo:
+    <<<Tema 1>>>
+    <<<Tema 2>>>
+    <<<Tema 3>>>
     ...
     """
     respuesta_temas = generar_respuesta(modelo, prompt_temas)
     print(f"Respuesta de temas: {respuesta_temas}")
     
-    temas = [tema.strip() for tema in respuesta_temas.split('>>>') if '<<<' in tema]
-    temas = [tema.replace('<<<', '').replace('>>>', '').strip() for tema in temas]
+    temas = [tema.replace('<<<', '').replace('>>>', '').strip() for tema in respuesta_temas.split('\n') if '<<<' in tema and '>>>' in tema]
     print(f"Temas: {temas}")
     
     temas_dict = {i+1: tema for i, tema in enumerate(temas)}
@@ -551,13 +535,12 @@ def asignar_temas(frases, temas_dict, modelo, contexto):
     temas_asignados = []
     for frase in frases:
         prompt_asignacion = f"""
-        Contexto del Proyecto: {contexto}
-        Temas disponibles:
+        Ten en cuenta los siguientes temas disponibles:
         {', '.join([f"{num}: {tema}" for num, tema in temas_dict.items()])}
 
-        Frase: {frase}
+        Frase: "{frase}"
         
-        Asigna el tema más relevante a la frase. Devuelve solo el número del tema en formato <<<n>>>.
+        Asigna el tema más relevante a la frase. DEVUELVE ÚNICAMENTE EL NÚMERO DEL TEMA ASIGNADO EN EL SIGUIENTE FORMATO: <<<n>>>
         """
         respuesta_asignacion = generar_respuesta(modelo, prompt_asignacion)
         print(f"Respuesta de asignación de temas: {respuesta_asignacion}")
