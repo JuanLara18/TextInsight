@@ -275,16 +275,14 @@ def corregir_frases_por_lote(frases: List[str], sensibilidad: str, tamaño_lote=
 
 # Corrección y procesamiento de datos
 def corregir_y_procesar_datos(df: pd.DataFrame, sensibilidad: str, modelo_seleccionado: str, contexto: dict) -> pd.DataFrame:
-    df['Corregidos'] = df['Originales'].apply(lambda frase: corregir_frase(frase, sensibilidad, modelo_seleccionado, contexto))
+    if sensibilidad == "Ninguna":
+        df['Corregidos'] = df['Originales']
+    else:
+        df['Corregidos'] = df['Originales'].apply(lambda frase: corregir_frase(frase, sensibilidad, modelo_seleccionado, contexto))
+    
     df['Procesados'] = df['Corregidos'].apply(preprocesar_texto)
     return df
-    """
-    Aplica la corrección y el preprocesamiento a todas las frases en el DataFrame,
-    utilizando el contexto del proyecto.
-    """
-    df['Corregidos'] = df['Originales'].apply(lambda frase: corregir_frase(frase, sensibilidad, modelo_seleccionado, contexto))
-    df['Procesados'] = df['Corregidos'].apply(preprocesar_texto)
-    return df
+
 
 # Distancias -----------------------------------------------------------
 

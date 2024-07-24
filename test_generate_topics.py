@@ -2,7 +2,7 @@ from src.methods import generar_temas, cargar_frases  # Asegúrate de importar l
 
 def test_generar_temas():
     # Cargar frases desde el archivo de prueba
-    archivo_prueba = "data/Frases_pocas.txt"
+    archivo_prueba = "data/Frases.txt"
     texto = cargar_frases(archivo_prueba)
     print("Texto cargado:")
     print(texto)
