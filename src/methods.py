@@ -487,17 +487,23 @@ def asignar_temas(frases, temas_dict, modelo):
     return temas_asignados
 
 def generar_temas(texto, n_temas, modelo, contexto):
+    # Primero, asegurarse de que el texto esté procesado
     frases = [frase.strip() for frase in texto.split('\n') if frase.strip()]
-    print(f"Frases: {frases}")
-    print(f"Número de frases: {len(frases)}")
+    frases_procesadas = [preprocesar_texto(frase) for frase in frases]
+    print(f"Frases procesadas: {frases_procesadas}")
+    print(f"Número de frases: {len(frases_procesadas)}")
 
-    temas_dict = obtener_temas(texto, n_temas, modelo, contexto)
-    temas_asignados = asignar_temas(frases, temas_dict, modelo)
+    temas_dict = obtener_temas('\n'.join(frases_procesadas), n_temas, modelo, contexto)
+    temas_asignados = asignar_temas(frases_procesadas, temas_dict, modelo)
 
     if len(frases) != len(temas_asignados):
         raise ValueError("Las longitudes de las frases y los temas asignados no coinciden.")
     
-    df_temas = pd.DataFrame({'Frase': frases, 'Tema': temas_asignados})
+    df_temas = pd.DataFrame({
+        'Originales': frases,
+        'Procesados': frases_procesadas,
+        'Tema': temas_asignados
+    })
     return df_temas
 
 # Sentimientos ---------------------------------------------------------

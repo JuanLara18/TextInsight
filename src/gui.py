@@ -34,7 +34,7 @@ def welcome_page():
     if 'reprocess_data' not in st.session_state:
         st.session_state['reprocess_data'] = False
     
-    st.title("Bienvenido a TextInsight")
+    st.title("Bienvenido a TextInsights")
     # Lista de modelos disponibles para seleccionar
     st.write("Text Insight es una herramienta de análisis de texto impulsada por modelos de Lenguaje de Aprendizaje Profundo (LLM) de Inteligencia Artificial, diseñada para descifrar, interpretar y revelar patrones ocultos y tendencias significativas en datos textuales complejos.")
     modelos_disponibles = ["gpt-3.5-turbo", "gpt-4", "davinci", "gpt-4-32k"]
